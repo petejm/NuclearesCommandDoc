@@ -269,9 +269,11 @@ def build(loop: int) -> list[Item]:
              lambda c: f"STEAM_TURBINE_{c.i}_TORQUE",
              lambda v: (num(v) or 0) > 2.0, "{}")),
         Item("Request STARTUP - Grid", no_signal("no variable")),
-        Item("Turbine RPM > 3050", simple(
+        # The in-game checklist text says "> 3050", but the synchroscope gate
+        # that actually lets you close the breaker is 3060. Operator-confirmed.
+        Item("Turbine RPM >= 3060 (sync gate)", simple(
              lambda c: f"STEAM_TURBINE_{c.i}_RPM",
-             lambda v: (num(v) or 0) > 3050, "{} rpm")),
+             lambda v: (num(v) or 0) >= 3060, "{} rpm")),
         Item("Sync - CLOSE Breaker", breaker),
         Item("External Power OFF", simple(lambda c: "POWER_FROM_EXTERNAL_KW",
              lambda v: (num(v) or 1) == 0, "{} kW")),

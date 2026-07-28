@@ -150,3 +150,51 @@ frequency.
 
 That bug is recorded rather than quietly fixed because it is the same failure
 this repository keeps documenting: a plausible variable that reads like success.
+
+## `monitor.py`
+
+Steady-state monitor for a running plant. Stays quiet unless something needs an
+operator.
+
+```bash
+python3 tools/monitor.py --loop 3 --interval 15
+python3 tools/monitor.py --loop 3 --interval 10 --log run.tsv
+```
+
+**Read-only.** The file contains no write method at all. That absence is the
+safety guarantee, rather than a flag someone could flip.
+
+### The guards are relational
+
+The two conditions that nearly emptied a secondary loop during testing were both
+comparisons between variables, and **no single-variable limit or rate check
+could express either**:
+
+| Guard | Condition |
+|---|---|
+| Steam balance | `RETURN_FLOW` vs `OUTLET`. A negative balance with falling inventory is CRIT |
+| Boiling | `COOLANT_SEC_{n}_TEMPERATURE` vs `STEAM_GEN_{n}_BOILING_POINT`, which **moves with pressure** |
+| Grid sync | amps > 0 checked against frequency and RPM together |
+| Margin | core temp and pressure against their own `_MAX` variables |
+| Integrity | with the 70% continuous-bleed threshold called out explicitly |
+
+An absolute temperature limit cannot catch "not boiling", because the boiling
+point is itself a live variable that was observed moving between 215 and 321
+within one session.
+
+### Guard the integral, not the derivative
+
+Inventory alerts use level plus net balance, never a rate sampled over one
+interval. Several of these signals are stepped sawtooths, so a short-window rate
+is noise: a tank was observed holding a value for 10 s and then jumping.
+
+### A deviation that is closing is not an alert
+
+The pressurizer check suppresses its warning when the deviation is already
+shrinking. A plant correcting itself does not need an operator, and alerting on
+it trains people to ignore the alert. Observed converging 172.4 to 158.4 across
+one run with no intervention.
+
+### Fail closed
+
+An unreadable variable raises `ERROR`. It never reads as healthy.
