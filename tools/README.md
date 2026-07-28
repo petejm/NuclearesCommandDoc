@@ -89,3 +89,64 @@ experiment aimed at one measures nothing while looking like a clean negative.
 Do not run immediately after a save load. The webserver unbinds on load and
 needs re-enabling, and settled values differ sharply from the first readings
 back.
+
+## `checklist.py`
+
+Tracks the in-game startup checklist (the `[C]` key) against live telemetry.
+
+```bash
+python3 tools/checklist.py --loop 3
+python3 tools/checklist.py --loop 3 --watch 5
+```
+
+The in-game checklist records what you **clicked**. This records what the plant
+is **doing**. They diverge, and the gap is where the interesting failures live: a
+command can be stored while the actuator is still slewing, an indexed variable
+can be `null` because that fuel bay is empty, and HTTP 200 certifies nothing.
+
+Pass `--loop` as the **in-game** loop number. The API index is one lower.
+
+### Statuses
+
+| Status | Meaning |
+|---|---|
+| `OK` | Telemetry satisfies the item |
+| `DONE` | Satisfied earlier, now superseded by a later item |
+| `SLEWING` | Ordered value is correct, actual is still travelling |
+| `PENDING` | Not satisfied yet |
+| `NO-SIGNAL` | **No API variable exists.** Not a pass |
+| `NO-REF` | Observable, but the threshold is not knowable from the API |
+| `ERROR` | Could not read. Never silently treated as pass or fail |
+
+`NO-SIGNAL` is load-bearing, not padding. Activating terminals, the external
+power switch, the grid startup request and the breaker close have no variable at
+all, so an automated client can neither perform nor verify them. Surfacing that
+is the point: it makes the hole in the commandable surface visible instead of
+implicit.
+
+`NO-REF` currently covers two items. `Retention Tank ~50%` has no capacity
+variable anywhere in the manifest, so a percentage cannot be computed; the raw
+volume is reported instead of a guess.
+
+### Supersession
+
+Several checklist items are staged: bypass goes 100 then 0, MSCV goes 0 then
+`>=25`, the startup motive valve goes 100 then 0, the vacuum pump goes `STARTUP`
+then `OPERATIONAL`. Once the later item is satisfied the earlier one legitimately
+stops matching, and calling that `PENDING` reads as a regression. Those are
+reported `DONE` with the item that superseded them.
+
+### Two traps this tool exists to avoid
+
+**`GENERATOR_{n}_BREAKER` carries no information.** It reads `True` on idle and
+uninstalled units alike.
+
+**`GENERATOR_{n}_KW` is not delivered power during spin-up.** Observed reading
+**33702 kW at 15.14 Hz with 0 amps**, while `POWER_FROM_TURBINE_KW` read 210.6.
+It appears to be a potential figure. An earlier version of this tool checked
+`kw > 0` and consequently reported a successful grid sync for a generator
+delivering nothing. The check now uses **amps**, cross-referenced against grid
+frequency.
+
+That bug is recorded rather than quietly fixed because it is the same failure
+this repository keeps documenting: a plausible variable that reads like success.
