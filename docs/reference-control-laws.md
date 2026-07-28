@@ -90,6 +90,94 @@ reduction does not reach the low-low level trip, and the swell during a 10% step
 load increase does not back water up into the moisture separators. The setpoint
 exists to absorb both directions of the artefact.
 
+## Pressurizer level is programmed, not held constant
+
+Section 10.3, Pressurizer Level Control System (`ML11223A290`).
+
+A constant-level pressurizer would be simple and wrong. As coolant heats it
+expands, level rises, the controller cuts charging flow, and with letdown fixed the
+plant ends up diverting coolant to the holdup tanks as liquid waste. On cooldown
+the reverse puts a large demand on makeup.
+
+So **level is programmed as a function of auctioneered high Tavg**, following the
+natural thermal expansion of the coolant. It is supposed to move.
+
+### The interlocks, and the one that matters most
+
+| Level | Action |
+|---|---|
+| **17%** | Low alarm, isolates letdown (letdown isolation valve plus all orifice isolation valves), and **turns off all pressurizer heaters** |
+| 25% | Programmed low limit. Prevents emptying after a reactor trip, and ensures a 10% step load increase does not uncover the heaters |
+| program +5% | Energizes backup heaters, anticipating the pressure reduction from a cool insurge |
+| 61.5% | Programmed high limit. Keeps the pressurizer from going solid after a turbine trip from 100% with no reactor trip |
+| 70% | High alarm, redundant letdown isolation, heaters off |
+| 92% | Reactor trip |
+
+The 17% heater cutoff exists for a blunt reason, quoted:
+
+> the heater cutoff protects the heaters which would be damaged if operated in a
+> steam environment.
+
+**Nucleares has no equivalent interlock.** A plant was observed live with
+`PRESSURIZER_HEATERS_ON = True` at `PRESSURIZER_FILL_LEVEL = 0.4626`, which is
+0.46%, roughly sixteen points below the real cutoff. The heaters were running
+fully uncovered. That pressurizer carried three `ALTA_TEMPERATURA` deterioration
+entries and integrity down to 90.51%.
+
+This is the fourth protection found missing, and the most awkward: the API cannot
+command the heaters either, so **only a human can prevent it.** A monitor can
+alarm on it, and should.
+
+For calibration, a healthy Nucleares pressurizer reads `FILL_LEVEL = 60`, which
+sits just under the real programmed high limit of 61.5%.
+
+### A second instrumentation artefact
+
+Level is measured as a differential pressure between a sealed reference leg and
+the variable leg inside the vessel. Water density varies with temperature, so
+**indicated level depends on pressurizer temperature**, and the transmitters are
+calibrated against it. Real plants carry a separately cold-calibrated transmitter
+used only in cold shutdown or while drawing a steam bubble, and it is deliberately
+excluded from control and protection.
+
+Same lesson as shrink and swell: the level reading is a derived quantity with
+known lies in it.
+
+## Steam dump: the turbine bypass has four jobs
+
+Section 11.2, Steam Dump Control System (`ML11223A294`). This is what
+`STEAM_TURBINE_{n}_BYPASS_ORDERED` corresponds to.
+
+Its purpose is to remove excess energy when reactor power exceeds secondary load,
+which happens whenever load drops faster than the rods can follow.
+
+**The rate limit worth memorising:** the automatic rod control system can absorb a
+**5%/min ramp or a 10% step** decrease in power without a trip. Beyond that, the
+steam dump has to make up the difference. A 40% dump capacity plus the rod
+system's 10% step is what allows a **50% load rejection without a reactor trip**.
+
+The four modes:
+
+| Mode | Purpose |
+|---|---|
+| Tavg | Accept a 50% loss of load without a trip |
+| Tavg | Remove stored energy and decay heat after a turbine trip, returning to no-load without lifting SG safety valves |
+| Steam pressure | Control steam pressure at low or no load; manual cooldown |
+| Steam pressure | **Provide constant steam flow during turbine startup and synchronisation, to facilitate manual feedwater control** |
+
+That last mode is the one to notice. During startup and sync, a real plant
+deliberately holds steam flow **constant** so that manually controlled feedwater
+has a stable target. That is precisely the regime in which a Nucleares secondary
+loop was observed draining, with the operator chasing a moving steam demand while
+trying to sync a turbine.
+
+The in-game checklist calling for turbine bypass at 100% during startup is the
+same idea.
+
+Note also that the steam dump is explicitly **control-grade**, not safety-grade,
+and is not required for safe shutdown. It exists to avoid trips, not to prevent
+accidents.
+
 ## Mapping the manual to Nucleares systems
 
 Sections worth reading, ordered by relevance to what this repository documents.
