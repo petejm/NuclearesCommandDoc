@@ -36,11 +36,12 @@ this repository is.
 | [docs/emergency-controls.md](docs/emergency-controls.md) | Live test results for 10 emergency variables no client had ever written |
 | [docs/fun-family.md](docs/fun-family.md) | The 15 `FUN_*` incident triggers, and why they need a hard blocklist |
 | [docs/unexplored.md](docs/unexplored.md) | What is read-only, what no client touches, and where the frontier is |
+| [docs/diagnostics-endpoint.md](docs/diagnostics-endpoint.md) | `AO_AGENT_DIAGNOSTICS_JSON`, a 10 KB pre-computed plant model no client reads |
 | [docs/scraping.md](docs/scraping.md) | **How to regenerate every table here yourself**, and the traps that make it hard |
 
 Raw captures live in [`data/`](data/).
 
-## Four findings worth reading even if you skip the rest
+## Five findings worth reading even if you skip the rest
 
 **1. Valves are not addressed by name.** There are exactly three valve POST
 endpoints (`VALVE_OPEN`, `VALVE_CLOSE`, `VALVE_OFF`) and the *value* you post is
@@ -63,7 +64,15 @@ column in [docs/writable-variables.md](docs/writable-variables.md). Verified by
 GET-probing all 91 names individually: 35 readable, 56 write-only, zero
 disagreement with the manifest.
 
-**4. There are two working trip paths and no working reset.**
+**4. One unread endpoint returns the whole plant, already interpreted.**
+`AO_AGENT_DIAGNOSTICS_JSON` gives roughly 10 KB of derived state in a single
+call: evaluated safety booleans, the game's own causal rules for pressure loss
+(including the quantified "below 70% integrity bleeds continuously"), and
+per-component damage logs naming *why* each item was damaged. It works with the
+AO DLC uninstalled. Details in
+[docs/diagnostics-endpoint.md](docs/diagnostics-endpoint.md).
+
+**5. There are two working trip paths and no working reset.**
 `CORE_SCRAM_BUTTON` and `CORE_EMERGENCY_STOP` both scram the reactor.
 `CORE_END_EMERGENCY_STOP` returns HTTP 200 and does nothing. Anything automating
 this plant gets a reliable abort with no programmatic recovery, so a scram has
