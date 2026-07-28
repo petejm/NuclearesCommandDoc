@@ -176,3 +176,69 @@ Contributions very welcome on any of these.
 - Establish whether `CORE_SCRAM_BUTTON` and `CORE_EMERGENCY_STOP` differ
   internally. Through the API they are indistinguishable.
 - Fix the null-probe aliasing before trusting any future pressure attribution.
+
+
+## RESOLVED 2026-07-28: `STEAM_TURBINE_TRIP` works
+
+Re-run under exclusive operator control against an **installed, synchronised,
+loaded** turbine, using the matched-null harness.
+
+Pre-trip: turbine 3 (`STEAM_TURBINE_2_*`) at 3055 RPM, generator 3
+(`GENERATOR_2_*`) carrying 29.4 MW at 49.92 Hz.
+
+### The trip signature
+
+The single most diagnostic variable is **`STEAM_TURBINE_{n}_PRESSURE`**, which
+drops to `1` and stays there. That is steam admission being cut, and unlike RPM
+or kW it moves immediately and unambiguously.
+
+| Variable | Before | After |
+|---|---|---|
+| `STEAM_TURBINE_2_PRESSURE` | 58.57 | **1** |
+| `STEAM_TURBINE_2_TORQUE` | 7.61 | 3.77 then 0 |
+| `GENERATOR_2_KW` | 29660 | 14622 then 0 |
+
+### Coastdown is exactly linear
+
+| t | RPM | Hz |
+|---|---|---|
+| +0 s | 2451 | 40.06 |
+| +10 s | 1838 | 30.05 |
+| +20 s | 1226 | 20.05 |
+| +30 s | 614 | 10.05 |
+| +40 s | 2.8 | 0.05 |
+| +50 s | 0 | 0 |
+
+**Exactly -1.00 Hz per second**, about -61 RPM/s, roughly 50 s from synchronous
+to standstill. A real turbine coasts down on a windage and friction curve; this
+model is linear, so do not fit an exponential to it.
+
+`MSCV_{n}_OPENING_ACTUAL` moved 5 to 32 on its own during the trip. The steam
+has to go somewhere, and the control valve responds automatically.
+
+### A turbine trip does NOT trip the reactor
+
+This is the operationally important part.
+
+| Variable | At trip | +2 min |
+|---|---|---|
+| `CORE_STATE` | REACTIVO | **REACTIVO** |
+| `CORE_TEMP` | 310.9 | 324.7 |
+| `CORE_STATE_CRITICALITY` | 0.06 | 0.03 |
+
+The core keeps running and **heats up**, because its heat sink just went away.
+There is no automatic reactor protection tied to the turbine trip.
+
+The plant does self-limit: criticality fell as temperature rose, which is the
+negative temperature coefficient doing its job, and the heating rate decayed.
+But an automated client must not assume a turbine trip is self-correcting on the
+primary side. It removes the heat sink and leaves the reactor critical.
+
+### Why the harness mattered here
+
+Seven of the eleven watched variables were drifting during the matched null,
+including RPM, torque, kW, Hz and volts, because a synchronising turbine is
+never at rest. A naive before-and-after diff would have attributed all of that
+motion to the command. The harness required each variable to exceed twice its
+own observed null spread, and the trip signature cleared that bar easily while
+the noise did not.

@@ -116,10 +116,10 @@ so the record shows what was asked and what came back.
 
 Still open, ranked by value per unit of effort:
 
-1. **Re-run `STEAM_TURBINE_TRIP` under exclusive control**, and against an
-   **installed** turbine. The original test evaluated turbine 0, which is not
-   installed on that plant, so it could not have registered an effect
-   regardless. Check `STEAM_TURBINE_{n}_INSTALLED` first.
+1. ~~Re-run `STEAM_TURBINE_TRIP` under exclusive control.~~ **Closed
+   2026-07-28: it works.** Signature is `STEAM_TURBINE_{n}_PRESSURE` dropping
+   to 1. Coastdown is exactly -1.00 Hz/s. It does **not** trip the reactor.
+   See [emergency-controls.md](emergency-controls.md).
 2. **Determine whether `CORE_SCRAM_BUTTON` and `CORE_EMERGENCY_STOP` differ
    internally.** Indistinguishable through the API.
 3. **Measure the integrity-to-leak relationship directly.** The game states
