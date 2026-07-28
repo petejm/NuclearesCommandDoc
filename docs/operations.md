@@ -12,37 +12,90 @@ Caveat worth stating: one of the checklists carries a reader comment saying
 "probably outdated". Numbers below agree across at least two sources where
 possible, and disagreements are shown rather than averaged.
 
-## Startup sequence
+## The game ships its own checklist. Use it.
 
-| # | Step | Setpoint | Source |
-|---|---|---|---|
-| 1 | Activate all console terminals | | `community` |
-| 2 | Enable external power | avoids burning generator fuel | `community` |
-| 3 | Emergency generators to MANUAL + STOP | prevents auto-restart | `community` |
-| 4 | Pressurizer thermostat and heaters ON | HIGH power. Slow | `community` |
-| 5 | Enable condenser vacuum | | `community` |
-| 6 | **Resistor bank ON** | **see warning below** | `community` |
-| 7 | Turbine bypass | `000` (all steam to turbines) | `community` |
-| 8 | MSCV | `000` (let steam pressure build) | `community` |
-| 9 | Wait for core vessel pressure | **>= 150 bar** | `community` |
-| 10 | Operating mode | `NOMINAL` | `community` |
-| 11 | Load fuel into inner core | | `community` |
-| 12 | Primary circulation pump | speed **15** (one guide says 25-50) | `community` |
-| 13 | Condenser pump | speed **1** | `community` |
-| 14 | Condenser vacuum | wait for **100** | `community` |
-| 15 | Control rods | **93%** (one guide says 99%) | `community` |
-| 16 | Wait for steam generator pressure | **>= 60 bar** | `community` |
-| 17 | MSCV | open to **5** | `community` |
-| 18 | Secondary pump | speed **25** | `community` |
-| 19 | Request STARTUP from the city | 10-15 min reply, approves next hour | `community` |
-| 20 | Wait for turbine | **>= 3050 RPM**, do not touch controls before | `community` |
-| 21 | Synchroscope | red dot to 12 o'clock, target **3060 RPM** | `community` |
-| 22 | Confirm SYNC green, close breaker | | `community` |
-| 23 | Disable external power, generators to AUTOMATIC | | `community` |
+Press **`[C]`** in game. It opens a live, per-loop startup checklist that tracks
+completion state, with a **LOOP 1 / 2 / 3** selector so it targets the loop you
+actually have installed.
 
-Rod position 93% is confirmed `live-probe`: an observed startup held rods at
-93 and reached criticality, and the in-game panel showed `BANK 1 = 100` with a
-setpoint entry of `093.0`.
+This is authoritative and supersedes community guides where they disagree, and
+they do disagree. Two corrections to an earlier version of this page, both
+sourced from community guides and both wrong:
+
+| Item | Community guides said | In-game checklist says |
+|---|---|---|
+| Turbine bypass at startup | `000` | **`100%`**, dropping to `0%` later |
+| Main steam control valve | open to `5` | **`>= 25%`** |
+
+The `MSCV x 5 = secondary pump` relation below is a **steady-state demand
+matching heuristic**, not a startup setpoint. Do not use it to judge a plant
+that is still coming up.
+
+## Startup sequence (from the in-game checklist, loop 3)
+
+Verified `live-probe` by reading the checklist directly at build V 2.2.25.220.
+
+```
+Activate all terminals
+External Power ON
+Generators MANUAL / OFF
+Resistor Bank ON
+PZR Thermostat & Heaters ON
+Primary Pump ON - Set to ~15%
+Turbine Bypass 100%
+Main Steam Control Valve 0%
+Startup Motive Steam Inlet Valve 100%
+Operational Motive Steam Inlet Valve 0%
+Confirm PZR operating temperature
+Primary Pump at ~15%
+Plant Mode NOMINAL
+PZR Heater LOW                          [optional]
+Control Rods at ~93%
+Load fuel
+Secondary Pump ON - Set to ~25%
+Cooling Pump ON - Set to ~25%
+STG Coolant operating level
+Retention Tank ~50%
+Vacuum Pump STARTUP
+Turbine Bypass 0%
+Vacuum Pressure 0.1 bar
+Vacuum Pump OPERATIONAL
+Startup Motive Steam Inlet Valve 0%
+Main Steam Control Valve >= 25%
+Wait Retention Tank < 50%
+Operational Motive Steam Inlet Valve >= 30%
+Turbine Torque > 2.0%
+Request STARTUP - Grid
+Wait Turbine RPM > 3050
+Wait confirmation to begin operations
+Sync - CLOSE Breaker
+External Power OFF
+```
+
+### Mapping the checklist to API variables
+
+| Checklist item | API variable |
+|---|---|
+| Primary Pump ~15% | `COOLANT_CORE_CIRCULATION_PUMP_{n}_ORDERED_SPEED` |
+| Secondary Pump ~25% | `COOLANT_SEC_CIRCULATION_PUMP_{n}_ORDERED_SPEED` |
+| Cooling Pump ~25% | `CONDENSER_CIRCULATION_PUMP_ORDERED_SPEED` |
+| Turbine Bypass | `STEAM_TURBINE_{n}_BYPASS_ORDERED` |
+| Main Steam Control Valve | `MSCV_{n}_OPENING_ORDERED` |
+| Startup Motive Steam Inlet Valve | `STEAM_EJECTOR_STARTUP_MOTIVE_VALVE` |
+| Operational Motive Steam Inlet Valve | `STEAM_EJECTOR_OPERATIONAL_MOTIVE_VALVE` |
+| Vacuum Pump STARTUP / OPERATIONAL | `CONDENSER_VACUUM_PUMP_MODE` (write `OPERATIONAL`, reads `OPERACIONAL`) |
+| Retention Tank ~50% | `VACUUM_RETENTION_TANK_VOLUME` |
+| Turbine Torque > 2.0% | `STEAM_TURBINE_{n}_TORQUE` |
+| Control Rods ~93% | `RODS_ALL_POS_ORDERED`, read `RODS_POS_ACTUAL` |
+| Plant Mode NOMINAL | `CORE_OPERATION_MODE` |
+| Load fuel | `CORE_BAY_{n}_FUEL_LOADING`, read `CORE_BAY_{n}_STATE` |
+
+Remember the indexing offset: checklist **LOOP 3** is API index **2**. See
+[value-semantics.md](value-semantics.md).
+
+**PZR heaters, the thermostat, external power, the grid request and the breaker
+have no writable variable at all.** An automated client cannot complete this
+checklist. See [unexplored.md](unexplored.md).
 
 ## The resistor bank warning
 
