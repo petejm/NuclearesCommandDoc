@@ -63,8 +63,50 @@ cased, not a client-side guess.
 | Variable | Posted | Result |
 |---|---|---|
 | `CORE_END_EMERGENCY_STOP` | `true` | HTTP 200, zero effect. See above |
-| `EMERGENCY_GENERATOR_2_START_STOP` | `START` | HTTP 200, no effect. Generator 2 stayed `INACTIVO` on the identical command that started generator 1. **Asymmetry unexplained** |
-| `EMERGENCY_BATTERIES_MODE` | `MANUAL` | Value discarded. Reads back `1`. A different enum family from the generators; actual vocabulary unknown |
+| `EMERGENCY_GENERATOR_2_START_STOP` | `START` | HTTP 200, no effect at the time. **Now explained, see below** |
+| `EMERGENCY_BATTERIES_MODE` | `MANUAL` | Value discarded. Reads back `1`. See the follow-up below |
+
+### Resolved 2026-07-28: the generator asymmetry was not an API defect
+
+Generator 2 was **out of fuel**.
+
+```
+EMERGENCY_GENERATOR_1_FUEL = 421
+EMERGENCY_GENERATOR_2_FUEL = 0
+```
+
+Identical command, identical handling, different plant state. `START` on a
+generator with no fuel returns HTTP 200 and does nothing, which is the
+"accepted, genuinely does nothing" case in
+[wire-format.md](wire-format.md).
+
+The lesson generalises: before recording an API asymmetry between two instances
+of the same equipment, read the equipment's own preconditions. The relevant
+variable was one GET away for an entire session.
+
+### Follow-up 2026-07-28: `EMERGENCY_BATTERIES_MODE` appears not to be settable
+
+Twelve values were posted with read-back after each: `1`, `2`, `3`, `0`, `4`,
+`AUTOMATICO`, `MANUAL`, `CHARGE`, `DISCHARGE`, `CARGA`, `DESCARGA`. Every one
+returned HTTP 200. None reliably set the value.
+
+The variable did transition `1` to `2` once, coincident with a `CHARGE` post.
+**That transition is unattributed**, and the evidence argues against the write
+having caused it: the variable subsequently refused every value including
+`CHARGE` itself and including `2`, the value it currently holds.
+
+Controls run at the same time:
+
+- A **matched null probe** over 24 s with no POST showed the value completely
+  stable, so it is not free-running drift.
+- A **positive control** on a known-good setter (`STEAM_GEN_0_VENT_SWITCH`,
+  False to True to False) worked cleanly in the same window, so the harness and
+  the write path were both functioning.
+
+Best current reading: `EMERGENCY_BATTERIES_MODE` is in the manifest's POST list
+but is not settable in practice, at least under these plant conditions, and the
+one observed transition was plant-driven. Stated as a working conclusion, not a
+finding. Independent confirmation welcome.
 
 ## Unattributed: do not treat these as confirmed
 

@@ -19,14 +19,44 @@ line, and four of the five look like success.
 | Accepted and worked | `CORE_SCRAM_BUTTON` <- `true` | Rods moved 93 to 100, `CORE_STATE` flipped, temperature trajectory reversed |
 | Accepted, value silently discarded | `EMERGENCY_BATTERIES_MODE` <- `MANUAL` | Reads back `1`, not `MANUAL`. Invalid enum thrown away without complaint |
 | Accepted, genuinely does nothing | `CORE_END_EMERGENCY_STOP` <- `true` | Rods stayed 100, `CORE_STATE` stayed `NOREACTIVO`, no state moved anywhere |
-| Wrote to a name that does not exist | bogus valve identifier posted to `VALVE_OPEN` | Nothing moves. The API does not reject unknown targets |
+| Accepted, target unresolvable | bogus valve identifier posted to `VALVE_OPEN` | Nothing moves. The variable name was valid, the *value* named no real valve, and that is not rejected |
 | Read of a nonexistent variable | `GET ?Variable=NOPE` | HTTP **200** with body `The readable variable 'NOPE' does not exist.` |
 
-Plus a sixth status that at least uses a distinct code:
+A **successful** write returns HTTP 200 with the literal body `null`.
+
+Two statuses do use honest codes:
 
 | Meaning | Example | Signal |
 |---|---|---|
 | Writable but gated | any `FUN_*` member | HTTP **412** |
+| Write to an unknown variable name | `POST ?Variable=NOPE` | HTTP **404**, body `The writable variable 'NOPE' does not exist.` |
+
+## The read and write paths disagree about unknown names
+
+This is worth stating on its own because it is counterintuitive:
+
+| Path | Unknown name | Status |
+|---|---|---|
+| Read | `The readable variable 'X' does not exist.` | **200** |
+| Write | `The writable variable 'X' does not exist.` | **404** |
+
+The **write path is better behaved than the read path.** A POST to a name that is
+not in the manifest fails loudly with a 404. A GET to a name that is not in the
+manifest succeeds with a 200 and hands you an English sentence where a value
+should be.
+
+The practical consequence for client authors: you can trust a write-path 404 to
+mean "this name is not writable", but you must never trust a read-path 200 to
+mean "this name is readable". Check the body.
+
+Verified `live-probe` at build V 2.2.25.220 against both a real-but-read-only
+name (`FREIGHT_PUMP_CONDENSER_ACTIVE`) and an invented one
+(`EMERGENCY_BATTERIES_MODE_XYZ`). Both returned 404.
+
+This also **confirms the manifest is ground truth for the writable surface.**
+`FREIGHT_PUMP_CONDENSER_ACTIVE` was the one outstanding candidate for the live
+surface being wider than the manifest advertises, since nathanctech's client
+POSTs to it. It is not writable. That client's code path has never worked.
 
 **Read-back is the only source of truth.** A 200 certifies nothing about
 effect, value acceptance, or target existence.

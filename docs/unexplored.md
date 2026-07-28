@@ -33,13 +33,14 @@ That leaves two genuine cases:
 
 | Name | Client | Assessment |
 |---|---|---|
-| `FREIGHT_PUMP_CONDENSER_ACTIVE` | nathanctech | This is a GET-list member, the read-back twin of the POST-list `FREIGHT_PUMP_CONDENSER_SWITCH`. auto_nuke correctly reads `_ACTIVE` and writes `_SWITCH` (`auto_nuke:api/pumps.ex:59-60`, distinct `active_key`/`switch_key` fields). nathanctech instead POSTs to `_ACTIVE` itself (`Condenser.cs:56`, `active?1:0`). Either a client bug posting to a read-only variable, which would no-op silently, or the live write surface is quietly wider than the self-published manifest. **Unconfirmed. Worth a live test.** |
+| `FREIGHT_PUMP_CONDENSER_ACTIVE` | nathanctech | **RESOLVED 2026-07-28: not writable.** POSTing it returns HTTP **404** (`The writable variable ... does not exist.`) for both `True` and `1`. A positive control on `_SWITCH` in the same run worked and carried `_ACTIVE` with it. So `_ACTIVE` is purely the read-back twin, auto_nuke has it right (`auto_nuke:api/pumps.ex:59-60`), and nathanctech's POST at `Condenser.cs:56` is a **client bug whose code path has never worked**. |
 | `ROD_BANK_{bank}_{rod}_POS` | nathanctech | Structurally different from the manifest's `ROD_BANK_POS_{n}_ORDERED`: two-dimensional bank-and-rod addressing, no `_ORDERED` suffix. Either a stale API surface the client was written against, or a naming error. Not present in the current manifest in this form. |
 
-The first of those two is the more interesting. If `_ACTIVE` really does accept
-writes, then the manifest under-reports the writable surface, and everything in
-this repository that treats the manifest as ground truth needs a caveat. Testing
-it is cheap and it is the highest-value single experiment left.
+That question is now settled, and it settles a larger one:
+**the manifest is ground truth for the writable surface.** It was the only
+outstanding candidate for the live API being wider than the game advertises, and
+it is not writable. Everything in this repository that treats the manifest as
+authoritative stands.
 
 ## The 13 variables no client has ever written
 
@@ -94,13 +95,45 @@ Stated plainly so nobody mistakes absence for completeness.
 
 Ranked by value per unit of effort.
 
-1. **Test whether `FREIGHT_PUMP_CONDENSER_ACTIVE` accepts writes.** Cheap, and
-   it either confirms the manifest is ground truth or breaks that assumption.
-2. **Fix the null-probe aliasing and re-run the 10 emergency probes.** Three
-   currently-published attributions are known-unreliable.
-3. **Re-run `STEAM_TURBINE_TRIP` under exclusive control.** The only reason it
+Three of the original five are now closed. Struck through with their outcomes,
+so the record shows what was asked and what came back.
+
+1. ~~Test whether `FREIGHT_PUMP_CONDENSER_ACTIVE` accepts writes.~~
+   **Closed:** it does not, HTTP 404. Manifest confirmed as ground truth.
+2. ~~Establish the generator 1 versus generator 2 asymmetry.~~
+   **Closed:** generator 2 had `FUEL = 0`. Plant state, not an API defect.
+3. ~~Brute-force `EMERGENCY_BATTERIES_MODE`'s enum.~~
+   **Closed as negative:** 12 values tried, none set it, against a verified
+   working harness. Appears not to be settable in practice.
+
+Still open, ranked by value per unit of effort:
+
+1. **Re-run `STEAM_TURBINE_TRIP` under exclusive control.** The only reason it
    is unattributed is a confounded observation, not a hard problem.
-4. **Brute-force `EMERGENCY_BATTERIES_MODE`'s enum.** Read values suggest
-   integers 1, 2, 3. Try posting those.
-5. **Establish the generator 1 versus generator 2 asymmetry.** Identical
-   command, different result, on a plant where both generators exist.
+2. **Confirm `RESET_AO`.** One 60 kW power delta on a single observation.
+3. **Determine whether `CORE_SCRAM_BUTTON` and `CORE_EMERGENCY_STOP` differ
+   internally.** Indistinguishable through the API.
+
+## Correction 2026-07-28: background drift is not constant
+
+An earlier version of this work recorded that pressure "falls about 0.2 bar
+every 5 to 10 seconds with no command issued", and treated that as a property of
+the simulation.
+
+It is not. A 140-sample read-only capture over 280 simulated seconds found
+`CORE_PRESSURE`, `PRESSURIZER_PRESSURE` and `PRESSURIZER_PRESSURE_DEVIATION`
+**completely static**, zero changes, while `CORE_TEMP` moved on a roughly 2
+second step.
+
+The drift is **plant-state dependent**. It was real when originally measured,
+during a pressurisation transient, and absent under different conditions.
+
+The consequence for anyone building a probe harness: you cannot calibrate one
+global settle window and reuse it. Drift rate is a function of plant condition,
+so every probe has to derive its own baseline from its own matched null, taken
+adjacent in time. A constant measured in an earlier session is not a constant.
+
+Related: several vessel volumes fill in **steps, not smoothly**.
+`VACUUM_RETENTION_TANK_VOLUME` was observed holding a value for 10 seconds and
+then jumping. Sampling such a signal at a fixed rate and differencing yields a
+confident and meaningless rate.
