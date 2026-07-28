@@ -3,14 +3,13 @@
 This repository is mostly a protocol map. This page is the operational context an
 automation author needs in order to know whether a reading is good or bad.
 
-Compiled from community documentation (linked at the bottom) and cross-checked
-against live telemetry at build V 2.2.25.220 where possible. Community-sourced
-numbers are marked `community`; anything verified against the API is marked
-`live-probe`.
+Primary source is the **game's own checklist**, on the `[C]` key. Community
+documentation fills in what the checklist does not explain, and is marked
+`community`; anything verified against the API is marked `live-probe`.
 
-Caveat worth stating: one of the checklists carries a reader comment saying
-"probably outdated". Numbers below agree across at least two sources where
-possible, and disagreements are shown rather than averaged.
+Where the two disagree, the in-game checklist wins and the disagreement is shown
+rather than averaged. One community checklist carries a reader comment saying
+"probably outdated", and at least two of its numbers are.
 
 ## The game ships its own checklist. Use it.
 
@@ -135,23 +134,24 @@ together, then watch steam outlet.
 
 Compliance target: **>= 90% of city demand**, averaged over each hour.
 
-### Why this matters for a monitor
+### Scope, and a retracted claim
 
-A plant can sit at a perfectly plausible-looking MSCV and secondary pump setting
-and still be badly out of balance. Observed `live-probe` on a plant that would
-not make steam:
+**This applies at steady state, not during startup.** The in-game checklist calls
+for MSCV `>= 25%` while coming up, which the ratio would flag as wildly
+unbalanced against a secondary pump at 25. Both cannot be right, and the
+checklist wins.
 
-```
-MSCV_2_OPENING_ACTUAL                        30
-COOLANT_SEC_CIRCULATION_PUMP_2_ORDERED_SPEED 30
-```
+An earlier revision of this page used the ratio to explain a plant observed at
+`MSCV 30` with a secondary pump at `30` that would not make steam. **That
+explanation is retracted.** MSCV 30 is inside the checklist's own startup band.
+The measured explanation needs no ratio and stands on its own: the secondary was
+12.9 C below a live boiling point, so evaporation was zero. See
+[Steam generation](#steam-generation).
 
-By the ratio, MSCV 30 wants a secondary pump at 150, which is off the top of the
-scale. Equivalently, a pump at 30 wants MSCV at 6. The valve was five times too
-far open for the feed rate, so the steam generator could not hold pressure.
-
-**A guard on the ratio `MSCV x 5 / secondary_pump_speed` catches this**, and no
-single-variable limit or rate check would.
+The ratio is still worth encoding as a **steady-state** guard, because it is
+relational and no single-variable limit or rate check can express it. But it
+must be gated on the plant being at power, and it has not been verified
+`live-probe` at any operating point yet.
 
 ## Shutdown sequence
 
