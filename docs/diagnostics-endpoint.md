@@ -45,12 +45,54 @@ Unsafe fuel hatches open cause core pressure loss.
 Heaters off allow natural cooling and pressure drop.
 ```
 
-That first line is a **quantified threshold**, and it resolves a class of
-"where is my water going" mysteries. A vessel below 70% integrity bleeds
-continuously, with no valve open and no command issued. Any mass-balance
-accounting that does not include an integrity term will fail to close, and the
-missing volume will look like an instrumentation fault when it is a modelled
-leak.
+That first line is a **quantified threshold**: below 70% integrity a vessel
+bleeds continuously, with no valve open and no command issued. Any mass-balance
+accounting that omits an integrity term can fail to close for reasons that are
+modelled, not instrumental.
+
+**Read the threshold precisely.** A component at 90% integrity is damaged but is
+*not* above this rule's trigger. Do not read "integrity below 100" as "leaking".
+The game distinguishes **wear** (scheduled degradation, repairable on a
+maintenance task) from **integrity** (damage). This note applies only to
+integrity, and only under 70%.
+
+## The staleness trap: `maintenance_summary` is a snapshot, not telemetry
+
+**This section is the most likely thing in the whole payload to be misread.**
+
+`maintenance_summary` is not live. It is the cached result of the in-game
+Operational Assistant's preventive-maintenance walkaround, which the player has
+to explicitly request. The assistant physically navigates the plant to produce
+it. If no analysis has been run, there is no data.
+
+The payload says so, in fields that are easy to skim past:
+
+```json
+"analysis_timestamp": "D: 3 | 18:58",
+"age_minutes": 209,
+"age_description": "hace 3 hora(s) de tiempo de simulación",
+"element_count": 131,
+"attention_count": 16
+```
+
+`age_minutes` **counts up between calls** (observed 209 then 222). Every
+integrity, wear and deterioration figure under `attention_items` is as of
+`analysis_timestamp`, not now.
+
+Only two components expose live integrity as ordinary variables:
+
+| Live variable | Everything else |
+|---|---|
+| `CORE_INTEGRITY` | snapshot only |
+| `PRESSURIZER_INTEGRITY` | snapshot only |
+
+So a storage-tank or turbine integrity figure read from this endpoint may be
+hours of simulated time out of date, while the core and pressurizer figures can
+be confirmed against a live GET. Always check `age_minutes` before quoting
+anything from `attention_items`, and prefer the live variable where one exists.
+
+`MAINTENANCE_REPORT_HTML` is a related GET-list member holding the rendered
+report. Same provenance, same staleness caveat.
 
 ## Deterioration logs name the cause
 

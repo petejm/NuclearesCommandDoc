@@ -137,3 +137,34 @@ Related: several vessel volumes fill in **steps, not smoothly**.
 `VACUUM_RETENTION_TANK_VOLUME` was observed holding a value for 10 seconds and
 then jumping. Sampling such a signal at a fixed rate and differencing yields a
 confident and meaningless rate.
+
+## The pressurizer is not commandable at all
+
+Verified `live-probe` at build V 2.2.25.220. `PRESSURIZER` appears 8 times in
+the 332-entry GET list and **zero** times in the 91-entry POST list. Seven
+plausible write names were probed and all returned HTTP 404:
+
+```
+PRESSURIZER_HEATERS_ON        PRESSURIZER_THERMOSTAT
+PRESSURIZER_HEATERS           PRESSURIZER_AUTO_THERMOSTAT
+PRESSURIZER_HEATERS_SWITCH    PRESSURIZER_HEATERS_REQUESTED
+PRESSURIZER_HEATER_POWER
+```
+
+You can read pressure, temperature, fill level, integrity, both `*_OPERATIVE`
+references and the heater state. You cannot set any of them.
+
+This is the largest gap in the commandable surface. In a PWR the pressurizer is
+the primary pressure-control system, so an autonomous controller can observe a
+pressurizer fault and has no direct means to correct it.
+
+The only indirect path is the actuated valve panel, which does expose
+`Valvula_Pressurizer_Spray`, `Valvula_Pressurizer_Vent` and
+`Valvula_Pressurizer_Relief_Vent` through the `VALVE_OPEN`/`VALVE_CLOSE`/
+`VALVE_OFF` meta-commands.
+
+**Safety note on that path:** community reports state that an open spray valve
+degrades pressurizer integrity very quickly while the thermostat is on. Since
+the thermostat is also not commandable, an automated client cannot establish the
+precondition that makes spraying safe. Treat the pressurizer spray valve as
+requiring a human in the loop.

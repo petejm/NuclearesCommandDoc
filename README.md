@@ -37,6 +37,7 @@ this repository is.
 | [docs/fun-family.md](docs/fun-family.md) | The 15 `FUN_*` incident triggers, and why they need a hard blocklist |
 | [docs/unexplored.md](docs/unexplored.md) | What is read-only, what no client touches, and where the frontier is |
 | [docs/diagnostics-endpoint.md](docs/diagnostics-endpoint.md) | `AO_AGENT_DIAGNOSTICS_JSON`, a 10 KB pre-computed plant model no client reads |
+| [docs/plant-mechanics.md](docs/plant-mechanics.md) | Simulation behaviours that make telemetry easy to misread: wear vs integrity, pressurizer level, uninstalled equipment |
 | [docs/scraping.md](docs/scraping.md) | **How to regenerate every table here yourself**, and the traps that make it hard |
 
 Raw captures live in [`data/`](data/).
