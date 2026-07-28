@@ -178,6 +178,76 @@ Note also that the steam dump is explicitly **control-grade**, not safety-grade,
 and is not required for safe shutdown. It exists to avoid trips, not to prevent
 accidents.
 
+## Xenon: the poison that moves the wrong way first
+
+Section 2.1, Reactor Physics Review (`ML11223A207`).
+
+Xe-135 has a thermal neutron capture cross section of **2.6 million barns**. It
+is formed only 0.3% directly from fission; the other 5.9% arrives down a decay
+chain whose timing is the whole story:
+
+```
+Te-135  --19.2 s-->  I-135  --6.6 hr-->  Xe-135  --9.1 hr-->  Cs-135 (stable)
+```
+
+Xenon is removed two ways: burnout by neutron capture (fast, proportional to
+flux) and radioactive decay (slow, fixed). Production is dominated by iodine
+decay, which **cannot change quickly** because iodine's half life is 6.6 hours.
+
+That asymmetry, fast removal against slow production, is why every xenon
+transient runs backwards at first.
+
+| Event | Xenon does this **first** | Then |
+|---|---|---|
+| Power **increase** | **decreases** (burnout jumps, iodine cannot follow) | rises to a *higher* equilibrium, about 96 hr |
+| Power **decrease** | **increases** (burnout drops, iodine keeps decaying in) | falls to a lower equilibrium, about 200 hr |
+| **Shutdown** | increases sharply, **peaks 8 to 9 hours later** | nearly gone in about 3 days |
+
+Equilibrium after a xenon-free startup takes roughly **48 hours** of power
+operation. Any power change takes about **2 days** to settle to its new
+equilibrium.
+
+**The trap:** trip a reactor that has been at power, then try to restart near the
+8-to-9 hour xenon peak, and the accumulated poison can exceed available rod
+worth. The community reports exactly this in Nucleares: a player with rods
+withdrawn to 0% who still could not recover and had to shut down. Recovery from
+severe xenon poisoning is close to impossible; only prevention works.
+
+Community-reported working numbers for Nucleares: keep iodine generation
+**below 2 at all times**, 1.5 to 1.8 while raising power, and both concentration
+gauges mid-green. The corresponding API variables are `CORE_IODINE_GENERATION`,
+`CORE_IODINE_CUMULATIVE`, `CORE_XENON_GENERATION`, `CORE_XENON_CUMULATIVE`.
+
+## The unifying pattern: fast signals lie during transients
+
+Three independent systems in this manual share one structure, and it is the most
+transferable idea here.
+
+| System | The fast signal | How it lies |
+|---|---|---|
+| Steam generator level | indicated level | **shrinks** on load decrease, **swells** on load increase, opposite to inventory |
+| Pressurizer level | indicated level | it is a differential pressure, so it tracks water **density** and therefore temperature, not volume alone |
+| Xenon | concentration | **falls** when power rises, **rises** when power falls, opposite to production |
+
+In every case the real plant's answer is the same shape:
+
+1. **Do not act on the fast reading during a transient.** Lag it, or subordinate
+   it to something slower.
+2. **Act on a balance instead.** Steam flow against feed flow. Charging against
+   letdown. Production against removal.
+3. **Let the slow signal become authoritative once things settle**, via an
+   integral term with a deliberately long time constant (two minutes on the
+   feedwater level controller).
+
+This is the same conclusion this repository reached empirically, from a stepped
+sawtooth tank gauge and a drift measurement that turned out to be plant-state
+dependent: **guard the integral, not the derivative.** It is reassuring to find
+it stated as design practice rather than discovered as a bug.
+
+The practical rule for a Nucleares client: when a reading moves sharply, the
+first question is not "what is wrong" but "is this the artefact or the thing".
+Check the balance before believing the level.
+
 ## Mapping the manual to Nucleares systems
 
 Sections worth reading, ordered by relevance to what this repository documents.

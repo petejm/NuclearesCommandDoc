@@ -100,6 +100,7 @@ class Monitor:
             "pzr_p_op": "PRESSURIZER_PRESSURE_OPERATIVE",
             "pzr_fill": "PRESSURIZER_FILL_LEVEL",
             "pzr_integ": "PRESSURIZER_INTEGRITY",
+            "pzr_heaters": "PRESSURIZER_HEATERS_ON",
             "demand": "POWER_DEMAND_MW",
         }
         vals, errs = {}, []
@@ -167,6 +168,23 @@ class Monitor:
             closing = isinstance(trend, float) and (d > 0) == (trend < 0) and abs(trend) > 0.5
             if abs(d) > 15 and not closing:
                 a.append(("WARN", f"pressurizer {d:+.1f} bar off setpoint and not converging"))
+
+        # Real Westinghouse plants cut ALL pressurizer heaters at 17% level,
+        # because heaters run in a steam environment are destroyed. Nucleares
+        # has no such interlock and the API cannot command the heaters, so only
+        # a human can act on this. Observed live: heaters ON at 0.46% fill on a
+        # pressurizer carrying three ALTA_TEMPERATURA deterioration entries.
+        # See docs/reference-control-laws.md.
+        fill, heat = v.get("pzr_fill"), v.get("pzr_heaters")
+        if isinstance(fill, float) and heat == "True":
+            if fill < 17:
+                a.append(("CRIT", f"pressurizer heaters ON at {fill:.1f}% level. "
+                                  f"A real plant cuts them at 17% because uncovered "
+                                  f"heaters are destroyed. Turn them off from the "
+                                  f"in-game panel; the API cannot"))
+            elif fill < 25:
+                a.append(("WARN", f"pressurizer level {fill:.1f}% is below the 25% "
+                                  f"programmed low limit, heaters still on"))
 
         for lbl, key in (("core", "core_integ"), ("pressurizer", "pzr_integ")):
             x = v.get(key)
