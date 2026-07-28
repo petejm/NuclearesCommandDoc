@@ -169,3 +169,33 @@ which measures a multi-sample matched null before each write and requires a
 drifting variable to exceed its own observed spread before counting as an
 effect. `STEAM_TURBINE_2_BYPASS_ORDERED` looked like noise by eye and returned a
 clean `EFFECT` verdict with an empty drift set once measured properly.
+
+## 8. Indexing: API index = physical unit minus one (mostly)
+
+Confirmed across three families at build V 2.2.25.220. Getting this wrong puts a
+client one unit off from the panel the operator is looking at.
+
+| Family | API | Physical / UI label |
+|---|---|---|
+| `CORE_BAY_{n}_*` | **1**-indexed, 1-9 | Bay 1-9 |
+| `ROD_BANK_POS_{n}_*` | **0**-indexed, 0-8 | `BANK 1`-`BANK 9` |
+| `STEAM_TURBINE_{n}_*` | **0**-indexed, 0-2 | Turbine 1-3 |
+
+So `STEAM_TURBINE_2_RPM` is the **third** turbine, and `ROD_BANK_POS_0_ORDERED`
+is the panel's `BANK 1`. The fuel bays are the exception that breaks the rule:
+they are 1-indexed and line up directly.
+
+The same split appears *inside a single record* in
+`maintenance_summary.attention_items`, where the display name is 1-indexed and
+the `object_id` beside it is 0-indexed:
+
+```json
+{"label": "GENERATOR (GE_Generador03)", "object_id": 2}
+{"label": "TURBINE (TG_2)",             "object_id": 2}
+```
+
+`GE_Generador03` and `object_id: 2` are the same unit. Turbine labels use the
+raw index, generator labels use the physical number, in the same payload.
+
+**Do not infer the convention from a name.** Check `_INSTALLED`, or match
+against `attention_items`, or confirm against the in-game panel.
