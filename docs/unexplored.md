@@ -75,9 +75,11 @@ entirely unexplored territory until it was tested here, and it works.
 
 Stated plainly so nobody mistakes absence for completeness.
 
-- **Value ranges are unconfirmed for 9 variables**, marked "range unconfirmed"
-  in [writable-variables.md](writable-variables.md). The names are confirmed
-  from client source; no client that writes them documents an accepted range.
+- ~~Value ranges are unconfirmed for 9 variables.~~ **Closed 2026-07-28.** All
+  16 instances across 6 families were swept. The finding is that the question
+  was malformed: there is **no API-side range validation at all**. `_ORDERED`
+  stores raw values including negatives and 1000, and clamping happens at the
+  actuator. See [value-semantics.md](value-semantics.md).
 - **`CORE_OPERATION_MODE`'s non-shutdown enum is disputed.** auto_nuke writes
   `NOMINAL`, GHXX reads `MAXIMUM`. The manifest gives no enum. Unresolved, and
   flagged rather than guessed. A live read at build V 2.2.25.220 returned
