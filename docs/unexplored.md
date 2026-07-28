@@ -106,13 +106,24 @@ so the record shows what was asked and what came back.
    **Closed as negative:** 12 values tried, none set it, against a verified
    working harness. Appears not to be settable in practice.
 
+4. ~~Confirm `RESET_AO`.~~
+   **Closed as negative:** no change in `AO_AGENT_STATUS` or
+   `POWER_FROM_EXTERNAL_KW` against a matched null. `AO_AGENT_STATUS` reports
+   `runtime_state: NoInstalado` and `dlc_installed: false`, so there is no agent
+   to reset. The earlier 60 kW delta was coincidence.
+
 Still open, ranked by value per unit of effort:
 
-1. **Re-run `STEAM_TURBINE_TRIP` under exclusive control.** The only reason it
-   is unattributed is a confounded observation, not a hard problem.
-2. **Confirm `RESET_AO`.** One 60 kW power delta on a single observation.
-3. **Determine whether `CORE_SCRAM_BUTTON` and `CORE_EMERGENCY_STOP` differ
+1. **Re-run `STEAM_TURBINE_TRIP` under exclusive control**, and against an
+   **installed** turbine. The original test evaluated turbine 0, which is not
+   installed on that plant, so it could not have registered an effect
+   regardless. Check `STEAM_TURBINE_{n}_INSTALLED` first.
+2. **Determine whether `CORE_SCRAM_BUTTON` and `CORE_EMERGENCY_STOP` differ
    internally.** Indistinguishable through the API.
+3. **Measure the integrity-to-leak relationship directly.** The game states
+   `<70%` integrity causes continuous bleed. Nobody has measured the rate, or
+   established whether it is pressure only or mass as well. Requires a vessel
+   below 70% and a clean inventory recording from t=0.
 
 ## Correction 2026-07-28: background drift is not constant
 

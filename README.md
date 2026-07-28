@@ -40,7 +40,8 @@ this repository is.
 | [docs/plant-mechanics.md](docs/plant-mechanics.md) | Simulation behaviours that make telemetry easy to misread: wear vs integrity, pressurizer level, uninstalled equipment |
 | [docs/scraping.md](docs/scraping.md) | **How to regenerate every table here yourself**, and the traps that make it hard |
 
-Raw captures live in [`data/`](data/).
+Raw captures live in [`data/`](data/). A working probe harness that implements
+the measurement method is in [`tools/`](tools/).
 
 ## Five findings worth reading even if you skip the rest
 
