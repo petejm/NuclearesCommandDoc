@@ -38,6 +38,7 @@ this repository is.
 | [docs/unexplored.md](docs/unexplored.md) | What is read-only, what no client touches, and where the frontier is |
 | [docs/diagnostics-endpoint.md](docs/diagnostics-endpoint.md) | `AO_AGENT_DIAGNOSTICS_JSON`, a 10 KB pre-computed plant model no client reads |
 | [docs/value-semantics.md](docs/value-semantics.md) | What the API does with what you send: no range validation, slewing actuators, `null`, type errors |
+| [docs/operations.md](docs/operations.md) | Startup and shutdown procedures, setpoints, and the thermal balance ratios |
 | [docs/plant-mechanics.md](docs/plant-mechanics.md) | Simulation behaviours that make telemetry easy to misread: wear vs integrity, pressurizer level, uninstalled equipment |
 | [docs/scraping.md](docs/scraping.md) | **How to regenerate every table here yourself**, and the traps that make it hard |
 
