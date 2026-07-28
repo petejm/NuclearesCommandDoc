@@ -1,0 +1,1984 @@
+{
+    "valves": {
+        "AGUA_Valve_01": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Boro_Valvula_Purga": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Camion_Valve_01_Boro": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Camion_Valve_02_NaOH": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Camion_Valve_03_Fuel": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Core_Valve_01": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Core_Valve_02": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "NAOH_Valve_01": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "NaOH_Valvula_Purga": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valve_Q_TANQUE_AGUA": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valve_Q_TANQUE_AGUA_CORE_EXTERNO": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valve_Q_TANQUE_AGUA_MAIN": {
+            "Sector": "CHEMICAL TREATMENT ROOM",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_CON_VACIO_RELIEF": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valvula_Core_Vent": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valvula_Descargar_REF": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_DRAIN_EVA01": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_DRAIN_EVA02": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_DRAIN_EVA03": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_BOMBA_VACIO": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_CONDENSADOR_01": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_CONDENSADOR_02": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_CONDENSADOR_03": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_EJECTOR_EVA": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_EJECTOR_TUR": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 31.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_NUCLEO_01": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_NUCLEO_02": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_NUCLEO_03": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_TURBINA_01": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_TURBINA_02": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRADA_TURBINA_03": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 5.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRE_BC_Y_EVA_01": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRE_BC_Y_EVA_02": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_ENTRE_BC_Y_EVA_03": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valvula_Pressurizer_Relief_Vent": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valvula_Pressurizer_Spray": {
+            "Sector": "CORE",
+            "Actuator": "OPEN",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": false,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valvula_Pressurizer_Vent": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_PURGA_C2_01": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "Valvula_Purgar_Coolant": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_REF_BYPASS_TUR_CS_01": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_REF_BYPASS_TUR_CS_02": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_REF_BYPASS_TUR_CS_03": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_RETORNO_CONDENSADOR": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_SALIDA_CONDENSADOR_01": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_SALIDA_CONDENSADOR_02": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_SALIDA_CONDENSADOR_03": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_SALIDA_NUCLEO_01": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_SALIDA_NUCLEO_02": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_SALIDA_NUCLEO_03": {
+            "Sector": "CORE",
+            "Actuator": "OFF",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_VACIO_CONDENSADOR": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 100.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": true,
+                "IsClosed": false,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_VENT_TURBINA_01": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_VENT_TURBINA_02": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_VENT_TURBINA_03": {
+            "Sector": "GENERATOR",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "VALVULA_VENTEO_TANQUE_RETENCION": {
+            "Sector": "CONDENSER",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "ValvulaDeCarga": {
+            "Sector": "DIESEL GENERATOR BUILDING",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        },
+        "ValvulaPurgadoFuel": {
+            "Sector": "DIESEL GENERATOR BUILDING",
+            "Actuator": "OFF",
+            "Value": 0.0,
+            "State": {
+                "SituationReached": true,
+                "OpeningTargetReached": true,
+                "IsOpened": false,
+                "IsClosed": true,
+                "BypassMode": false,
+                "Stuck": false,
+                "Flooded": false
+            }
+        }
+    },
+    "pumps": {
+        "BC_0_EXTERIOR_CARGA": {
+            "Type": "FREIGHT PUMP",
+            "ID": "BOMBA_RESERVORIO_00",
+            "Sector": "EXTERIOR",
+            "Flow": [
+                0.0,
+                150.0
+            ],
+            "State": {
+                "Active": false,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": false,
+                "EnergySufficent": false,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_1_EXTERIOR_CARGA": {
+            "Type": "FREIGHT PUMP",
+            "ID": "BOMBA_RESERVORIO_01",
+            "Sector": "EXTERIOR",
+            "Flow": [
+                0.0,
+                150.0
+            ],
+            "State": {
+                "Active": false,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": false,
+                "EnergySufficent": false,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_2_EXTERIOR_CARGA": {
+            "Type": "FREIGHT PUMP",
+            "ID": "BOMBA_RESERVORIO_02",
+            "Sector": "EXTERIOR",
+            "Flow": [
+                0.0,
+                150.0
+            ],
+            "State": {
+                "Active": false,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": true,
+                "EnergySufficent": false,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_1_CONDENSADOR_CARGA": {
+            "Type": "FREIGHT PUMP",
+            "ID": "PumpCARGA_C2",
+            "Sector": "CONDENSER",
+            "Flow": [
+                0.0,
+                200.0
+            ],
+            "State": {
+                "Active": false,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": false,
+                "EnergySufficent": false,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_2_GENERADOR_CIRCULACION": {
+            "Type": "CIRCULATION PUMP",
+            "ID": "PumpCon_3",
+            "Sector": "GENERATOR",
+            "Flow": [
+                30.0,
+                200.0
+            ],
+            "State": {
+                "Active": true,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": true,
+                "EnergySufficent": true,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_0_REFRIGERANTE_CARGA": {
+            "Type": "FREIGHT PUMP",
+            "ID": "PumpLoad_1",
+            "Sector": "COOLANT",
+            "Flow": [
+                0.0,
+                200.0
+            ],
+            "State": {
+                "Active": false,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": false,
+                "EnergySufficent": false,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_2_NUCLEO_CARGA": {
+            "Type": "FREIGHT PUMP",
+            "ID": "PumpLoadNucExt_1",
+            "Sector": "CORE",
+            "Flow": [
+                0.0,
+                300.0
+            ],
+            "State": {
+                "Active": false,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": true,
+                "EnergySufficent": false,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_2_REFRIGERANTE_CIRCULACION": {
+            "Type": "CIRCULATION PUMP",
+            "ID": "PumpNuc_3",
+            "Sector": "COOLANT",
+            "Flow": [
+                69.86,
+                200.0
+            ],
+            "State": {
+                "Active": true,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": true,
+                "EnergySufficent": true,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        },
+        "BC_0_CONDENSADOR_CIRCULACION": {
+            "Type": "CIRCULATION PUMP",
+            "ID": "PumpRef_1",
+            "Sector": "CONDENSER",
+            "Flow": [
+                70.0,
+                200.0
+            ],
+            "State": {
+                "Active": true,
+                "Dry": false,
+                "Overload": false,
+                "SetSpeedReached": true,
+                "EnergySufficent": true,
+                "MaintenanceRequired": false,
+                "UnderConstruction": false,
+                "Destroyed": false,
+                "Flooded": false
+            }
+        }
+    },
+    "pipes": {
+        "AGUA_Water_Pipe_01_SalidaTanque": [
+            0.0,
+            100.0
+        ],
+        "AGUA_Water_Pipe_02": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_01_SalidaTanqueBoro": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_02": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_03": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_04": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_05_EntradaBomba": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_06_SalidaBomba": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_07": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_08": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_09": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_10": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_11": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_12": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_13": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_14": [
+            0.0,
+            100.0
+        ],
+        "BORO_Water_Pipe_15_EntradaCore": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_01_SalidaColumnaIones": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_02": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_03": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_04": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_05": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_06": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_07": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_08": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_09": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_10": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_11": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_12": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_13": [
+            0.0,
+            100.0
+        ],
+        "Columna_Water_Pipe_14_EntradaCore": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_01_SalidaCore": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_02": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_03": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_04": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_05": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_06": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_07": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_08": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_09": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_10_EntradaBomba": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_11_SalidaBomba": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_12": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_13": [
+            0.0,
+            100.0
+        ],
+        "Core_Water_Pipe_14_EntradaColumnaIones": [
+            0.0,
+            100.0
+        ],
+        "Externo_01_WP_01_EntradaBomba": [
+            100.0,
+            100.0
+        ],
+        "Externo_01_WP_02_SalidaBomba": [
+            100.0,
+            100.0
+        ],
+        "Externo_01_WP_03_TO_Reservorio_01": [
+            100.0,
+            100.0
+        ],
+        "Externo_01_WP_04_TO_Reservorio_01": [
+            100.0,
+            100.0
+        ],
+        "Externo_02_WP_01_desde_Reservorio_01": [
+            100.0,
+            100.0
+        ],
+        "Externo_02_WP_01_EntradaBomba": [
+            100.0,
+            100.0
+        ],
+        "Externo_02_WP_02_desde_Reservorio_01": [
+            100.0,
+            100.0
+        ],
+        "Externo_02_WP_02_SalidaBomba": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_03_desde_Reservorio_01": [
+            100.0,
+            100.0
+        ],
+        "Externo_02_WP_06_a_Reactor": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_07_a_Reactor": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_08_a_Reactor": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_08_a_Reactor (1)": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_08_a_Reactor (19)": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_08_a_Reactor (29) EntradaTanqueAgua": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_08_a_Reactor (30)": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_08_a_Reactor (9)": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_01": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_02": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_03": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_04": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_05": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_06_EntradaTanque": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_07": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_08": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_09": [
+            0.0,
+            100.0
+        ],
+        "Externo_02_WP_09_a_Distribucion_10_EntradaTanqueMainCore": [
+            0.0,
+            100.0
+        ],
+        "Externo_03_WP_00_Camion": [
+            0.0,
+            250.0
+        ],
+        "Externo_03_WP_01_EntradaBomba": [
+            0.0,
+            250.0
+        ],
+        "Externo_03_WP_02_SalidaBomba": [
+            0.0,
+            250.0
+        ],
+        "FTC_CON01_STE01_02_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTC_CON02_STE02_02_CS02": [
+            0.0,
+            1000.0
+        ],
+        "FTC_CON03_STE03_02_CS03": [
+            1000.0,
+            1000.0
+        ],
+        "FTC_TUR01_CON01_01_CS01_SalidaTurbina": [
+            0.0,
+            1000.0
+        ],
+        "FTC_TUR02_CON02_01_CS02_SalidaTurbina": [
+            0.0,
+            1000.0
+        ],
+        "FTC_TUR03_CON03_01_CS03_SalidaTurbina": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_01_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_01_CS02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_01_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_02_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_02_CS02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_02_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_03_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_03_CS02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_BYPASS_03_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CARGA_01": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_02": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_03": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_04": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_C2_01_SALIDA_BOMBA": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_C2_02": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_C2_03": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_C2_04": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_C2_05_ENTRADA_CONDENSADOR": [
+            400.0,
+            400.0
+        ],
+        "FTR_CARGA_EXT_01": [
+            0.0,
+            400.0
+        ],
+        "FTR_CARGA_EXT_02": [
+            0.0,
+            400.0
+        ],
+        "FTR_CARGA_EXT_03": [
+            0.0,
+            400.0
+        ],
+        "FTR_CARGA_EXT_04": [
+            0.0,
+            400.0
+        ],
+        "FTR_CON01_STE01_01_CS01_SalidaCondensador": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON01_STE01_03_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON01_STE01_04_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON01_STE01_05_CS01_EntradaSteamGenerator": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON02_STE02_01_CS02_SalidaCondensador": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON02_STE02_03_CS02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON02_STE02_04_CS02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON02_STE02_05_CS02_EntradaSteamGenerator": [
+            0.0,
+            1000.0
+        ],
+        "FTR_CON03_STE03_01_CS03_SalidaCondensador": [
+            1000.0,
+            1000.0
+        ],
+        "FTR_CON03_STE03_03_CS03": [
+            1000.0,
+            1000.0
+        ],
+        "FTR_CON03_STE03_04_CS03": [
+            1000.0,
+            1000.0
+        ],
+        "FTR_CON03_STE03_05_CS03_EntradaSteamGenerator": [
+            1000.0,
+            1000.0
+        ],
+        "FTR_CONDENSADOR_EXTRAE_01": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_EXTRAE_02": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_EXTRAE_03": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_EXTRAE_04": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_EXTRAE_05_TORRE": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_EXTRAE_BOMBA": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_INTERCAMBIO": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_PROPULSA_01": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_PROPULSA_02": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_PROPULSA_03": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_PROPULSA_04_TORRE": [
+            100.0,
+            100.0
+        ],
+        "FTR_CONDENSADOR_PROPULSION_BOMBA": [
+            100.0,
+            100.0
+        ],
+        "FTR_DESCARGA_01": [
+            0.0,
+            100.0
+        ],
+        "FTR_DESCARGA_02": [
+            0.0,
+            100.0
+        ],
+        "FTR_DESCARGA_03": [
+            0.0,
+            100.0
+        ],
+        "FTR_DESCARGA_04": [
+            0.0,
+            100.0
+        ],
+        "FTR_DESCARGA_05": [
+            0.0,
+            100.0
+        ],
+        "FTR_DRAIN_EV01": [
+            0.0,
+            100.0
+        ],
+        "FTR_DRAIN_EV02": [
+            0.0,
+            100.0
+        ],
+        "FTR_DRAIN_EV03": [
+            0.0,
+            100.0
+        ],
+        "FTR_PURGA_01": [
+            0.0,
+            100.0
+        ],
+        "FTR_PURGA_C2_01_SALIDA_CONDENSADOR": [
+            0.0,
+            300.0
+        ],
+        "FTR_PURGA_C2_02": [
+            0.0,
+            300.0
+        ],
+        "FTR_PURGA_C2_03": [
+            0.0,
+            300.0
+        ],
+        "FTR_PURGA_C2_04": [
+            0.0,
+            300.0
+        ],
+        "FTR_PURGA_C2_08_DESCARGA_DEPOSITO": [
+            0.0,
+            300.0
+        ],
+        "FTR_SPRAY": [
+            0.0,
+            1.0
+        ],
+        "FTR_STE01_TUR01_01_CS01_SalidaSteamGenerator": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE01_TUR01_02_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE01_TUR01_03_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE01_TUR01_04_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE01_TUR01_05_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE01_TUR01_06_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE01_TUR01_07_CS01_EntradaTurbina": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE02_TUR02_01_CS02_SalidaSteamGenerator": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE02_TUR02_02_CS_02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE02_TUR02_03_CS_02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE02_TUR02_04_CS_02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE02_TUR02_05_CS_02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE02_TUR02_06_CS_02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE02_TUR02_07_CS_02_EntradaTurbina": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE03_TUR03_01_CS03_SalidaSteamGenerator": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE03_TUR03_02_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE03_TUR03_03_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE03_TUR03_04_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE03_TUR03_05_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE03_TUR03_06_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_STE03_TUR03_07_CS03_EntradaTurbina": [
+            0.0,
+            1000.0
+        ],
+        "FTR_TUR01_CON01_02_CS01": [
+            0.0,
+            1000.0
+        ],
+        "FTR_TUR01_CON01_03_CS01_EntradaCondensador": [
+            0.0,
+            1000.0
+        ],
+        "FTR_TUR02_CON02_02_CS02": [
+            0.0,
+            1000.0
+        ],
+        "FTR_TUR02_CON02_03_CS02_EntradaCondensador": [
+            0.0,
+            1000.0
+        ],
+        "FTR_TUR03_CON03_02_CS03": [
+            0.0,
+            1000.0
+        ],
+        "FTR_TUR03_CON03_03_CS03_EntradaCondensador": [
+            0.0,
+            1000.0
+        ],
+        "NAOH_Water_Pipe_01_SalidaTanque": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_02": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_03_EntradaBomba": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_04_SalidaBomba": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_05": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_06": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_07": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_08": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_09": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_10_LimpiezaColumnaIones": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_11": [
+            0.0,
+            100.0
+        ],
+        "NAOH_Water_Pipe_12_EntradaTanqueResiduos": [
+            0.0,
+            100.0
+        ],
+        "PRO_BC01_06_LOOP_01": [
+            0.0,
+            1000.0
+        ],
+        "PRO_BC01_07_LOOP_01": [
+            0.0,
+            1000.0
+        ],
+        "PRO_BC01_08_NUC_LOOP_01": [
+            0.0,
+            1000.0
+        ],
+        "PRO_BC02_06_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "PRO_BC02_07_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "PRO_BC02_08_NUC_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "PRO_BC03_06_LOOP_03": [
+            1000.0,
+            1000.0
+        ],
+        "PRO_BC03_07_LOOP_03": [
+            1000.0,
+            1000.0
+        ],
+        "PRO_BC03_08_NUC_LOOP_03": [
+            1000.0,
+            1000.0
+        ],
+        "SUC_BC01_01_LOOP_01": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC01_02_LOOP_01": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC01_03_EVA_01_LOOP_01": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC01_04_LOOP_01": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC01_05_NUC_LOOP_01": [
+            1000.0,
+            1000.0
+        ],
+        "SUC_BC02_01_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC02_02_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC02_03_EVA_02_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC02_04_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC02_05_NUC_LOOP_02": [
+            0.0,
+            1000.0
+        ],
+        "SUC_BC03_01_LOOP_03": [
+            1000.0,
+            1000.0
+        ],
+        "SUC_BC03_02_LOOP_03": [
+            1000.0,
+            1000.0
+        ],
+        "SUC_BC03_03_EVA_03_LOOP_03": [
+            965.07,
+            1000.0
+        ],
+        "SUC_BC03_04_PRE_LOOP_03": [
+            1000.0,
+            1000.0
+        ],
+        "SUC_BC03_05_NUC_LOOP_03": [
+            1000.0,
+            1000.0
+        ]
+    },
+    "vessels": {
+        "CONDENSER": {
+            "Temperature": 21.28569,
+            "Pressure": 0.1,
+            "Volume": [
+                169769.953,
+                360000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "CORE POOL": {
+            "Temperature": 16.15,
+            "Pressure": 0.0,
+            "Volume": [
+                150000.0,
+                150000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "OCEANO": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                499991.75,
+                500000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "PRESSURIZER": {
+            "Temperature": 542.915,
+            "Pressure": 140.591,
+            "Volume": [
+                720.000244,
+                1200.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "EXTERNAL RESERVOIR": {
+            "Temperature": 17.1120186,
+            "Pressure": 1.0,
+            "Volume": [
+                259301.25,
+                500000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "SteamGenerators_1": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                50000.0,
+                60000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "SteamGenerators_2": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                50000.0,
+                60000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "SteamGenerators_3": {
+            "Temperature": 285.0,
+            "Pressure": 59.9653664,
+            "Volume": [
+                59950.0,
+                60000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "RINSE TANK": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                50000.0,
+                80000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "CORE POOL STORAGE TANK": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                50000.0,
+                80000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "PRIMARY CIRCUIT STORAGE TANK": {
+            "Temperature": 115.622581,
+            "Pressure": 1.0,
+            "Volume": [
+                0.0,
+                150000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "BORIC ACID": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                0.0,
+                100000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "DIESEL FUEL": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                0.0,
+                4000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "WASTE TANK": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                0.0,
+                8000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "SODIUM HYDROXIDE": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                0.0,
+                100000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "CHEMICAL WASTE CONTAINER": {
+            "Temperature": 20.0,
+            "Pressure": 0.0,
+            "Volume": [
+                0.0,
+                200000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        },
+        "Condenser Retention Tank": {
+            "Temperature": 134.067,
+            "Pressure": 1.0,
+            "Volume": [
+                22486.9531,
+                40000.0
+            ],
+            "Internal": {
+                "PurgeValveOpen": false,
+                "PressureReliefValveOpen": false
+            }
+        }
+    }
+}
