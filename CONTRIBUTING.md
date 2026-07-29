@@ -36,6 +36,21 @@ precedent for this in
 document it next to the results it affects. Again, there is precedent: the
 null-probe aliasing disclosure in the same file.
 
+**Test hypotheses where they disagree, not where they agree.** An observation
+that two rival explanations both predict is not evidence for either one; it
+only feels like it is. It takes a second observation, chosen specifically
+because the rivals diverge there, to settle anything. Two examples in this
+repository: the rated-power denominator (400 vs 1200,
+[docs/value-semantics.md](docs/value-semantics.md) section 12) could not be
+settled by a plausible-looking ratio, only by an installed-equipment test.
+`TIME_STAMP`'s semantics (minutes since midnight vs. cumulative minutes since
+game start, same file section 13) looked settled by a single daytime reading
+that both hypotheses explained identically; only a reading taken after
+crossing midnight discriminated between them. Before treating a single
+reading as a finding, ask what a rival hypothesis would have predicted at
+that same point. If the answer is "the same thing," you have not measured
+anything yet.
+
 **Do not fit a constant to the event you are explaining.** If you need a plant
 capacity or a tank volume, look it up in the manifest. Deriving it from the
 transfer you are trying to account for is circular, and it has already produced

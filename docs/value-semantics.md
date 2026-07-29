@@ -279,13 +279,39 @@ Two honest limits on that conclusion:
    treated as the real setpoint. See
    [protection-system.md](protection-system.md), "The calibration gap".
 
-## 13. `TIME_STAMP` is minutes since midnight, `TIME` is the same clock as HH:MM
+## 13. `TIME_STAMP` is cumulative minutes since game start, not since midnight
 
-Measured: `TIME` read 13:24 while `TIME_STAMP` read 804, and 13 times 60 plus
-24 equals 804. It advanced to 841 later in the session. It therefore wraps at
-1440.
+Measured, two observations:
 
-This is the only correct clock for any rate limit on plant actions. Real
-wall-clock time is wrong whenever the game is paused or time-accelerated, and
-a client rate-limiting against `time.time()` will be wrong by exactly the
-game's speed multiplier. `TIME_STAMP` is not.
+- Early in a session: `TIME` read 13:24 while `TIME_STAMP` read 804, and 13
+  times 60 plus 24 equals 804.
+- Later, after crossing midnight: `TIME` read 01:27, `TIME_STAMP` read 1527,
+  and `TIME_DAY` read 1. 1527 is above 1440, and 1527 mod 1440 is 87, which is
+  01:27.
+
+Observation 1 alone does not distinguish "minutes since midnight" from
+"cumulative minutes since game start": both hypotheses predict 804 on day
+zero. Only crossing midnight discriminates between them, and it does so
+decisively. See "Test hypotheses where they disagree, not where they agree"
+in [CONTRIBUTING.md](../CONTRIBUTING.md) for the general form of this trap;
+the rated-power constants in section 12 above were resolved the same way.
+
+**`TIME_STAMP` is monotonic and does not wrap.** It counts in-game minutes
+since the start of the game.
+
+**`TIME` is the derived wall clock**, equal to `TIME_STAMP` mod 1440,
+formatted HH:MM.
+
+**`TIME_DAY` is the day counter.** It is present in the manifest and was not
+previously documented here. It read 1 after the first in-game midnight, in
+step with `TIME_STAMP` crossing 1440.
+
+This is the only correct clock for any rate limit on plant actions, for two
+independent reasons. Real wall-clock time is wrong whenever the game is
+paused or time-accelerated, and a client rate-limiting against `time.time()`
+will be wrong by exactly the game's speed multiplier. `TIME` is additionally
+wrong for this purpose because it wraps: a rate-limit window measured against
+`TIME` can straddle midnight and read as if less time had passed than
+actually did. `TIME_STAMP` has neither problem. Being monotonic is what makes
+it correct here: a counter that never resets cannot make a rate-limit window
+appear to restart on its own.
