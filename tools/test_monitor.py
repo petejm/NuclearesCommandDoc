@@ -239,6 +239,117 @@ class TestSecondaryInventoryReference(unittest.TestCase):
         self.assertFalse(find(alerts, "WARN", "secondary inventory"))
 
 
+class TestInventorySeedRegimeIndependent(unittest.TestCase):
+    """Cases 22-26. Fixed 2026-07-28: the inventory reference seed in
+    alerts() was gated by `rg == "at_power" and bal >= 0`. `at_power` has
+    been removed, `bal >= 0` stays. See the seeding comment in monitor.py
+    for the full reasoning: Westinghouse Trip 16 (SG low-low level) carries
+    NO INTERLOCKS, a flow mismatch is regime dependent (Trip 17, P-7) but a
+    level is dangerous in every regime, so gating the seed by regime was a
+    category error that made the guard inert during startup, exactly the
+    phase a secondary was measured draining in.
+    """
+
+    def test_live_regression_startup_seed_then_crit(self):
+        """Case 22: the live regression, reproducing the 21:18 to 21:26
+        sequence measured on a live plant, startup regime throughout (amps
+        0.0, op_mode "NOMINAL": regime() requires amps > 0 for "at_power",
+        so this reads as "startup").
+
+        21:18: sec_liq 44586, out 11, ret 50 (balance +39, clean and
+        healthy). The pre-fix code refused to seed here because regime()
+        was "startup", not "at_power". Post-fix this must seed the
+        reference to 44586.
+
+        21:26: sec_liq 27141, out 71, ret 50 (balance -21.4), a 39% drop
+        with a falling trend. Pre-fix, with no reference ever seeded, the
+        monitor could only produce "[INFO] steam draw exceeds return", no
+        CRIT, because the inventory guard had nothing to compare against.
+        Post-fix the reference is 44586, frac = (44586-27141)/44586 =
+        0.391, which crosses the 0.30 CRIT threshold given the falling
+        trend, and a CRIT mentioning inventory must be produced.
+        """
+        m = monitor.Monitor(1)
+        v1 = healthy_snapshot(sec_liq=44586.0, out=11.0, ret=50.0,
+                               amps=0.0, op_mode="NOMINAL")
+        self.assertEqual(m.regime(v1), "startup")
+        m.alerts(v1, [])
+        self.assertEqual(m.sec_liq_ref, 44586.0)
+
+        m.hist["sec_liq"] = deque([44586.0, 36000.0, 27141.0], maxlen=30)
+        v2 = healthy_snapshot(sec_liq=27141.0, out=71.0, ret=50.0,
+                               amps=0.0, op_mode="NOMINAL")
+        self.assertEqual(m.regime(v2), "startup")
+        alerts = m.alerts(v2, [])
+        self.assertTrue(find(alerts, "CRIT", "secondary inventory"))
+
+    def test_reference_still_seeds_at_power(self):
+        """Case 23: no regression for the case that already worked. A
+        healthy at-power sample with balance not negative still seeds the
+        reference, exactly as before the fix.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(sec_liq=12000.0, out=500.0, ret=510.0,
+                              amps=500.0, op_mode="NOMINAL")
+        self.assertEqual(m.regime(v), "at_power")
+        m.alerts(v, [])
+        self.assertEqual(m.sec_liq_ref, 12000.0)
+
+    def test_reference_not_seeded_when_balance_negative_any_regime(self):
+        """Case 24: the mid-drain protection is not lost. A negative
+        balance must never seed the reference, in any regime, at_power or
+        startup alike.
+        """
+        m_power = monitor.Monitor(1)
+        v_power = healthy_snapshot(sec_liq=9000.0, out=600.0, ret=500.0,
+                                    amps=500.0, op_mode="NOMINAL")
+        m_power.alerts(v_power, [])
+        self.assertIsNone(m_power.sec_liq_ref)
+
+        m_startup = monitor.Monitor(1)
+        v_startup = healthy_snapshot(sec_liq=9000.0, out=600.0, ret=500.0,
+                                      amps=0.0, op_mode="NOMINAL")
+        m_startup.alerts(v_startup, [])
+        self.assertIsNone(m_startup.sec_liq_ref)
+
+    def test_reference_rises_with_higher_reading_not_lowered_by_drop(self):
+        """Case 25: high-water mark behaviour, explicit. A later, higher
+        healthy reading raises the reference; a subsequent healthy but
+        lower reading must not lower it, the reference only ever rises or
+        holds.
+        """
+        m = monitor.Monitor(1)
+        v1 = healthy_snapshot(sec_liq=10000.0, out=500.0, ret=510.0)
+        m.alerts(v1, [])
+        self.assertEqual(m.sec_liq_ref, 10000.0)
+
+        v2 = healthy_snapshot(sec_liq=15000.0, out=500.0, ret=510.0)
+        m.alerts(v2, [])
+        self.assertEqual(m.sec_liq_ref, 15000.0)
+
+        # Balance still not negative (ret 500 >= out 490), liquid lower
+        # than the established reference: must not pull the reference down.
+        v3 = healthy_snapshot(sec_liq=8000.0, out=490.0, ret=500.0)
+        m.alerts(v3, [])
+        self.assertEqual(m.sec_liq_ref, 15000.0)
+
+    def test_steam_feed_balance_guard_still_downgraded_in_startup(self):
+        """Case 26: proves the two guards are treated differently ON
+        PURPOSE. The steam/feed balance guard (Trip 17 analog, gated by
+        P-7 through regime()) is unchanged by this fix and still
+        downgrades to INFO during startup, in contrast to the inventory
+        reference seed above, which is no longer regime gated at all.
+        """
+        m = monitor.Monitor(1)
+        m.hist["sec_liq"] = deque([12000.0, 11500.0, 11000.0], maxlen=30)
+        v = healthy_snapshot(out=550.0, ret=500.0, sec_liq=11000.0,
+                              amps=0.0, op_mode="NOMINAL")
+        self.assertEqual(m.regime(v), "startup")
+        alerts = m.alerts(v, [])
+        self.assertTrue(find(alerts, "INFO", "expected during startup"))
+        self.assertFalse(has_severity(alerts, "CRIT"))
+
+
 class TestErrorsAlwaysReported(unittest.TestCase):
     """Case 12: unreadable variables produce ERROR alerts regardless of
     regime. Fail closed applies before any regime gating happens.

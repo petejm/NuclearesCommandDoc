@@ -116,15 +116,51 @@ compute. This is not a rounding gap or an approximation, it is a missing
 input: the real setpoint needs a denominator this API does not expose.
 
 What `monitor.py` substitutes instead is a run-local high-water mark, the
-highest `COOLANT_SEC_{n}_LIQUID_VOLUME` observed while the loop looked healthy
-this run, and a percent below that. That is a materially different
+highest `COOLANT_SEC_{n}_LIQUID_VOLUME` observed while the loop's balance
+(`RETURN_FLOW_PLUS_CONDENSED` minus `OUTLET`) was not negative, in any
+regime, and a percent below that. That is a materially different
 measurement from Trip 16. It resets every run, so it cannot generalize across
 sessions or a game restart. It can be fooled low, treating an already-depressed
-level as the ceiling if the monitor starts mid-drain. And if the monitor never
-observes a healthy at-power sample, the guard never fires at all, silently, by
-design, because a silent wrong number is worse than no number. None of that is
-true of Trip 16, which is derived from a known plant nominal and holds
-regardless of any one run's history.
+level as the ceiling if the monitor starts mid-drain, which is why the
+balance condition, not a regime condition, is what guards the seed. And if
+the monitor never observes a sample with balance not negative, the guard
+never fires at all, silently, by design, because a silent wrong number is
+worse than no number. None of that is true of Trip 16, which is derived
+from a known plant nominal and holds regardless of any one run's history.
+
+### A permissive gates a mismatch, never a level
+
+The reference above seeds in any regime, not only at power, and that was a
+fix, not the original design. The first version gated the seed by
+`regime() == "at_power"`, on the same reasoning as the Trip 17 analog: a
+guard correct at power can be wrong during startup. That reasoning does not
+transfer to a level, and Trip 16 itself is the evidence: `2/3` on `1/4` SGs,
+**no interlocks**, per the table above. A flow mismatch, the subject of
+Trip 17, is genuinely regime dependent, expected during startup while the
+bypass and the ejectors draw steam, which is why Trip 17 carries the `P-7`
+permissive. A level is dangerous in every regime, which is why the real
+plant gates it with nothing at all. Applying a permissive to a level guard
+is a category error, and the effect was concrete: gating the seed by
+`at_power` made the level guard inert during exactly the phase this
+document already describes a secondary draining in, turbine startup and
+synchronisation.
+
+Measured on a live plant, minutes apart: at 21:18, secondary liquid 44586,
+balance +39 (outlet 11, return 50), a clean sample that should have seeded
+the reference. At 21:26, secondary liquid 27141, balance -21.4 (outlet 71,
+return 50), falling roughly 33 units/s, a 39% drop from the first reading.
+Regime was `startup` at both timestamps, so the `at_power`-gated code never
+seeded a reference, and the inventory guard had nothing to compare against;
+the monitor logged only `[INFO] steam draw exceeds return`, no CRIT. With
+the gate removed, the reference seeds at 44586, and the fraction at 21:26 is
+`(44586-27141)/44586 = 0.391`, which crosses the 0.30 CRIT threshold given
+the falling trend. That is the case that exposed the bug.
+
+This does not make the run-local reference Trip 16. It is still a run-local
+high-water mark, not a plant nominal, still reset every run, and still
+silent if no sample with balance not negative is ever observed. The fix
+only removes a gate that should never have been there; it does not close
+the calibration gap described below.
 
 ### The calibration gap
 

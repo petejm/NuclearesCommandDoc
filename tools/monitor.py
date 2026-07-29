@@ -36,7 +36,11 @@ Design notes, each from a failure this repository documents:
   wrong during startup, the way a real permissive like P-7 gates trips by
   plant condition. But when the regime itself can't be read, that is a reason
   to treat the plant as if it were at power, not a reason to go quiet. See
-  `regime()`.
+  `regime()`. This applies to a guard judging a MISMATCH, the steam/feed
+  balance guard's regime gate below. A guard judging a single-variable LEVEL
+  carries no such gate, the way Westinghouse Trip 16 (SG low-low level)
+  carries no interlocks at all. See the inventory-reference seeding comment
+  in `alerts()`.
 
 * **Fail closed applies to the observation channel too, not just a
   variable.** A monitor instance was found running 2 hours after the game
@@ -128,9 +132,10 @@ class Monitor:
         self.hist: dict[str, deque] = {}
         # Run-local high-water mark for secondary liquid volume, raised by
         # the balance block in alerts() and consumed by the inventory guard
-        # right after it. None until a healthy at-power sample seeds it. See
-        # the comments at both use sites for why this is a run-local
-        # reference and not a plant nominal.
+        # right after it. None until a sample with balance not negative
+        # seeds it, in any regime. See the comments at both use sites for
+        # why this is a run-local reference and not a plant nominal, and
+        # for why seeding is not regime gated.
         self.sec_liq_ref: float | None = None
 
         # Outage tracking. A monitor found running 2 hours after the game
@@ -330,11 +335,49 @@ class Monitor:
         if isinstance(out, float) and isinstance(ret, float):
             bal = ret - out
             # Reference for the inventory guard below: seed/raise the
-            # run-local secondary-liquid high-water mark only when the loop
-            # looks healthy, at_power and balance not negative. Seeding on a
-            # depressed reading would lock in an already-bad level as
-            # "normal" if the monitor is started mid-drain.
-            if rg == "at_power" and bal >= 0 and isinstance(liq, float):
+            # run-local secondary-liquid high-water mark whenever balance is
+            # not negative, in ANY regime. This is not regime gated, and
+            # that is a deliberate fix, not the original design. See the
+            # long comment below for the reasoning; short version: a
+            # permissive may gate a mismatch, never a level.
+            #
+            # bal >= 0 stays: seeding on an already negative balance would
+            # lock in a reading taken mid-drain as "normal" if the monitor
+            # is started while the loop is already losing inventory. That
+            # hazard has nothing to do with regime, and it is the one
+            # condition that still guards this block.
+            #
+            # at_power was removed, and was wrong to begin with: Westinghouse
+            # Trip 16, SG low-low level, carries NO INTERLOCKS
+            # (docs/protection-system.md), by design, not by omission. A
+            # flow MISMATCH is regime dependent, genuinely expected during
+            # startup while the bypass and the ejectors draw steam, which is
+            # exactly why Trip 17 exists with the P-7 permissive just below
+            # this block. A low LEVEL is dangerous in every regime, which is
+            # why the level trip carries no permissive at all. Gating this
+            # seed by at_power applied a permissive to a level guard, a
+            # category error, and it made the guard inert during precisely
+            # the phase this repository already documents a secondary
+            # observed draining (turbine startup and synchronisation).
+            # Measured on a live plant, minutes apart:
+            # 21:18 liquid 44586, balance +39 (out 11, ret 50), clean and
+            # healthy, an ideal reference; 21:26 liquid 27141, balance -21.4
+            # (out 71, ret 50), falling roughly 33 units/s, a 39% drop from
+            # the first reading. Regime was "startup" at both timestamps, so
+            # the old code never seeded a reference and the inventory guard
+            # below had nothing to compare against; the monitor logged only
+            # "[INFO] steam draw exceeds return" for the 21:26 reading, no
+            # CRIT. With the gate removed, the reference seeds at 44586, and
+            # frac at 21:26 is (44586-27141)/44586 = 0.391, which crosses
+            # the 0.30 CRIT threshold given the falling trend, the correct
+            # answer the old code could not reach.
+            #
+            # Residual weakness, unchanged by this fix and still worth
+            # stating: this is a run-local high-water mark, not a plant
+            # nominal, and if no sample with balance not negative is ever
+            # observed, the guard still never fires. See the inventory
+            # guard's own comment below.
+            if bal >= 0 and isinstance(liq, float):
                 if self.sec_liq_ref is None or liq > self.sec_liq_ref:
                     self.sec_liq_ref = liq
             # This is the P-7 analog (docs/protection-system.md, Trip 17,
@@ -346,6 +389,13 @@ class Monitor:
             # "is the generator actually carrying load and does the plant
             # report NOMINAL", which is exactly what regime() answers.
             # Detection is unchanged from before, only severity is gated.
+            #
+            # Contrast with the reference seed just above: a MISMATCH
+            # (this guard) is regime dependent and correctly gated here.
+            # A LEVEL (the inventory guard below) is not, and is no longer
+            # gated above. The two guards are treated differently on
+            # purpose, matching Trip 17's P-7 permissive against Trip 16's
+            # complete absence of one, not inconsistently.
             if bal < 0 and isinstance(tr, float) and tr < 0:
                 if rg == "startup":
                     a.append(("INFO", f"secondary losing inventory: balance {bal:+.1f} "
@@ -369,12 +419,14 @@ class Monitor:
         # it cannot be, because no capacity/nominal variable exists for
         # COOLANT_SEC_{n}_LIQUID_VOLUME, so a percent of plant nominal is not
         # computable (docs/protection-system.md documents that gap). What
-        # this actually measures is percent below the highest healthy level
-        # this run has observed, a run-local reference, not a plant nominal.
-        # Known weakness, and it is deliberate: if the monitor never
-        # observes a healthy at-power period, no reference is ever
-        # established and this guard never fires. A silent wrong number is
-        # worse than no number.
+        # this actually measures is percent below the highest level this run
+        # has observed with balance not negative (see the seeding comment
+        # above; seeding is not regime gated, a permissive may gate a
+        # mismatch, never a level), a run-local reference, not a plant
+        # nominal. Known weakness, and it is deliberate: if the monitor
+        # never observes a sample with balance not negative, no reference
+        # is ever established and this guard never fires. A silent wrong
+        # number is worse than no number.
         #
         # The 0.30 and 0.15 fractions below are themselves uncalibrated
         # heuristics, the same status as the turbine guard's 10.0 above, not
