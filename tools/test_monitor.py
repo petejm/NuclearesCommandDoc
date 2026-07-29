@@ -21,10 +21,12 @@ two invocations above instead.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import unittest
 from collections import deque
+from unittest import mock
 
 # Make "import monitor" work whether this file is run directly (repo root
 # is not automatically on sys.path in that case) or picked up by unittest
@@ -88,6 +90,20 @@ def find(alerts: list[tuple[str, str]], severity: str, contains: str) -> list[st
 
 def has_severity(alerts: list[tuple[str, str]], severity: str) -> bool:
     return any(sev == severity for sev, _ in alerts)
+
+
+def fake_read_factory(overrides: dict, default=(True, "123.0")):
+    """Builds a stand-in for monitor.read() that answers every variable
+    name with `default` unless the name is a key in `overrides`, where it
+    answers with the exact (ok, value) pair given. snap() calls
+    monitor.read() by name for each entry in its own `names` dict plus
+    RESISTOR_BANKS_JSON, so patching the module-level function is the
+    seam that lets Monitor.snap() itself be exercised without any
+    network access, still no curl, no game, just a swapped-out function.
+    """
+    def fake_read(name):
+        return overrides.get(name, default)
+    return fake_read
 
 
 class TestRegime(unittest.TestCase):
@@ -608,6 +624,189 @@ class TestOutageRecovery(unittest.TestCase):
 
         second = m.alerts(healthy_snapshot(), [], now=22.0)
         self.assertFalse(find(second, "WARN", "readings resumed"))
+
+
+class TestVesselTemperatureDivergence(unittest.TestCase):
+    """Cases 33-34: the vessel_t/core_t divergence guard. Both names have
+    read byte identical (309.4696) in every sample taken so far; this
+    guard exists to detect whether that ever stops being true, not
+    because a small gap is itself dangerous. 1.0 is an uncalibrated
+    heuristic, see monitor.py.
+    """
+
+    def test_within_tolerance_no_warn(self):
+        """Case 33: a 0.5 gap, within the 1.0 tolerance, produces no
+        divergence WARN.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(vessel_t=300.5, core_t=300.0)
+        alerts = m.alerts(v, [])
+        self.assertFalse(find(alerts, "WARN", "diverged"))
+
+    def test_beyond_tolerance_is_warn(self):
+        """Case 34: a 2.0 gap, beyond the 1.0 tolerance, produces the
+        divergence WARN, and it is informative severity (WARN), not
+        CRIT, per the guard's own comment: firing is informative, not an
+        emergency.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(vessel_t=302.0, core_t=300.0)
+        alerts = m.alerts(v, [])
+        self.assertTrue(find(alerts, "WARN", "diverged"))
+
+
+class TestResistorBankParsing(unittest.TestCase):
+    """Case 35: RESISTOR_BANKS_JSON parsing via parse_resistor_banks(),
+    a pure function so this can be tested directly without network
+    access. Only installed banks count towards either the installed
+    count or the max temperature; the important case is that a naive
+    max() or count over all four entries would return an uninstalled
+    bank's fake Temperature 0.0 as the hottest bank, or inflate the
+    count. Fixture is the measured live payload: one installed bank at
+    29.6399632, three uninstalled banks at 0.0.
+    """
+
+    def test_only_installed_banks_counted_and_maxed(self):
+        raw = json.dumps({"resistors": {
+            "Resistor_Bank_01": {"IsInstalled": 1, "Temperature": 29.6399632},
+            "Resistor_Bank_02": {"IsInstalled": 0, "Temperature": 0.0},
+            "Resistor_Bank_03": {"IsInstalled": 0, "Temperature": 0.0},
+            "Resistor_Bank_04": {"IsInstalled": 0, "Temperature": 0.0},
+        }})
+        count, max_t, err = monitor.parse_resistor_banks(raw)
+        self.assertIsNone(err)
+        self.assertEqual(count, 1.0)
+        self.assertAlmostEqual(max_t, 29.6399632)
+
+    def test_second_installed_bank_sets_max_not_the_raw_entry_count(self):
+        """A second, hotter installed bank must set the max; the count
+        must reflect the two installed banks, not the four raw entries.
+        """
+        raw = json.dumps({"resistors": {
+            "Resistor_Bank_01": {"IsInstalled": 1, "Temperature": 29.6},
+            "Resistor_Bank_02": {"IsInstalled": 1, "Temperature": 45.2},
+            "Resistor_Bank_03": {"IsInstalled": 0, "Temperature": 0.0},
+            "Resistor_Bank_04": {"IsInstalled": 0, "Temperature": 0.0},
+        }})
+        count, max_t, err = monitor.parse_resistor_banks(raw)
+        self.assertIsNone(err)
+        self.assertEqual(count, 2.0)
+        self.assertEqual(max_t, 45.2)
+
+    def test_malformed_json_returns_error_and_does_not_raise(self):
+        """The pure-function half of case 36: a malformed body returns
+        an error string instead of raising, and both derived values come
+        back None.
+        """
+        count, max_t, err = monitor.parse_resistor_banks("{not valid json")
+        self.assertIsNone(count)
+        self.assertIsNone(max_t)
+        self.assertIsNotNone(err)
+
+
+class TestResistorBankSnapIntegration(unittest.TestCase):
+    """Case 36: the snap()-level half of the malformed-JSON case, proving
+    the parse failure actually reaches `errs` the way every other
+    per-variable read failure in this file does, and that snap() itself
+    does not raise. monitor.read() is monkeypatched so this stays a unit
+    test, no network, no game; see fake_read_factory().
+    """
+
+    def test_malformed_resistor_json_appends_to_errs_not_raise(self):
+        fake = fake_read_factory(
+            {"RESISTOR_BANKS_JSON": (True, "{not valid json")})
+        m = monitor.Monitor(1)
+        with mock.patch.object(monitor, "read", fake):
+            vals, errs = m.snap()  # must not raise
+        self.assertIsNone(vals["res_installed"])
+        self.assertIsNone(vals["res_max_t"])
+        self.assertTrue(any("RESISTOR_BANKS_JSON" in e for e in errs))
+
+    def test_clean_resistor_json_reaches_vals_via_snap(self):
+        """Regression guard for the integration wiring itself, not just
+        the pure parser: a clean payload read through snap() ends up in
+        vals under the expected keys.
+        """
+        raw = json.dumps({"resistors": {
+            "Resistor_Bank_01": {"IsInstalled": 1, "Temperature": 29.6399632},
+            "Resistor_Bank_02": {"IsInstalled": 0, "Temperature": 0.0},
+        }})
+        fake = fake_read_factory({"RESISTOR_BANKS_JSON": (True, raw)})
+        m = monitor.Monitor(1)
+        with mock.patch.object(monitor, "read", fake):
+            vals, errs = m.snap()
+        self.assertEqual(vals["res_installed"], 1.0)
+        self.assertAlmostEqual(vals["res_max_t"], 29.6399632)
+        self.assertFalse(any("RESISTOR_BANKS_JSON" in e for e in errs))
+
+
+class TestDumpedPowerGuard(unittest.TestCase):
+    """Cases 37-39: dumped-power guards, resistor bank thermal trend and
+    the majority-of-generation waste guard, plus the fabricated-KW
+    regression that must suppress both when amps read 0.
+    """
+
+    def test_dumped_power_not_computed_when_amps_zero(self):
+        """Case 37: fabricated-KW regression. GENERATOR_{i}_KW reads a
+        fabricated potential figure when GENERATOR_{i}_A is 0 (measured
+        live: 33702 kW at 0 amps, docs/value-semantics.md section 9). If
+        dumped power were computed from that fabricated KW, an unsynced
+        plant reading a large idle KW figure against a small demand
+        could fire a dump-related alert with no basis in reality. Dumped
+        power must simply not be computed when amps is 0, not computed
+        as some fallback value, so neither dump guard may fire here even
+        with a rising bank-temperature trend and a huge nominal KW.
+        """
+        m = monitor.Monitor(1)
+        m.hist["res_max_t"] = deque([29.0, 29.3, 29.64], maxlen=30)
+        v = healthy_snapshot(amps=0.0, gen_kw=33702.0, demand=1.0,
+                              res_installed=1.0, res_max_t=29.64)
+        alerts = m.alerts(v, [])
+        self.assertFalse(find(alerts, "WARN", "resistor bank absorbing"))
+        self.assertFalse(find(alerts, "WARN", "being dumped as heat"))
+
+    def test_dumped_power_with_rising_temp_trend_is_warn(self):
+        """Case 38: measured live, 26,548 kW generated against 7 MW
+        demand, dumping about 19.5 MW into the single installed bank.
+        hist is populated directly, per this file's convention for trend
+        tests, rather than through snap().
+        """
+        m = monitor.Monitor(1)
+        m.hist["res_max_t"] = deque([29.64, 29.70, 29.80], maxlen=30)
+        v = healthy_snapshot(amps=500.0, gen_kw=26548.0, demand=7.0,
+                              res_installed=1.0, res_max_t=29.80)
+        alerts = m.alerts(v, [])
+        warn = find(alerts, "WARN", "resistor bank absorbing")
+        self.assertTrue(warn)
+        self.assertIn("19.5", warn[0])
+
+    def test_dumped_power_flat_temp_trend_no_warn(self):
+        """Companion to case 38: the same dumped power, but the bank
+        temperature is flat rather than rising, must not produce the
+        thermal-trend WARN. Guarding the trend, not the dump alone, is
+        the point.
+        """
+        m = monitor.Monitor(1)
+        m.hist["res_max_t"] = deque([29.64, 29.64, 29.64], maxlen=30)
+        v = healthy_snapshot(amps=500.0, gen_kw=26548.0, demand=7.0,
+                              res_installed=1.0, res_max_t=29.64)
+        alerts = m.alerts(v, [])
+        self.assertFalse(find(alerts, "WARN", "resistor bank absorbing"))
+
+    def test_dumped_power_majority_of_generation_is_warn(self):
+        """Case 39: dumped power exceeding half of generation triggers
+        the waste guard independent of the thermal-trend guard. 26,548
+        kW generated, 7 MW demand: dumping about 19.5 MW is roughly 74%
+        of output, matching the measured live figure in
+        docs/protection-system.md ("73.6 percent of generation").
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(amps=500.0, gen_kw=26548.0, demand=7.0,
+                              res_installed=1.0, res_max_t=29.64)
+        alerts = m.alerts(v, [])
+        warn = find(alerts, "WARN", "being dumped as heat")
+        self.assertTrue(warn)
+        self.assertIn("74%", warn[0])
 
 
 if __name__ == "__main__":

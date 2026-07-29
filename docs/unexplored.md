@@ -1,5 +1,35 @@
 # What is read-only, what nobody has touched, and where the frontier is
 
+## Reactor vessel inlet temperature: operator-visible, API-invisible
+
+A manifest-wide search for `INLET`, `OUTLET` and `VESSEL` returns exactly two
+names: `COOLANT_CORE_QUANTITY_IN_VESSEL` and `COOLANT_CORE_VESSEL_TEMPERATURE`.
+There is no reactor vessel inlet temperature variable and no outlet
+temperature variable anywhere in the manifest.
+
+This is not a hypothetical gap. The in-game gauge for VESSEL INLET
+TEMPERATURE is what the human operator actually uses to make primary-pump-
+speed decisions; one such adjustment was made specifically because "vessel
+inlet temp is too high," read straight off that gauge, on a plant where the
+API has no variable of that name to offer in its place.
+
+`COOLANT_CORE_VESSEL_TEMPERATURE` is the closest named thing the API exposes,
+and `tools/monitor.py` now carries it alongside `CORE_TEMP` (see
+[value-semantics.md](value-semantics.md), section 14). It is not proven to be
+the same signal as vessel inlet temperature. Measured so far it reads byte
+identical to `CORE_TEMP`, which if anything suggests it may be neither the
+inlet reading nor a distinct measurement at all, rather than confirming it as
+a stand-in.
+
+State the consequence plainly: an advisory client built on this API cannot
+see the variable the operator is actually steering by, and an autonomous
+controller would be operating without an instrument the operator considers
+primary. This is the same pattern already documented elsewhere in this
+repository for other balance-of-plant thresholds, the pressurizer heater
+cutoff and the SG low-low level trip among them: the real threshold lives on
+an in-game gauge or in operator judgement, not in anything the API exposes.
+See [protection-system.md](protection-system.md), "The calibration gap".
+
 ## Not commandable at all
 
 `VALVE_M01_OPEN`, `VALVE_M02_OPEN` and `VALVE_M03_OPEN` are **GET-only**

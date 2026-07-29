@@ -47,6 +47,21 @@ on `STEAM_EJECTOR_STARTUP_MOTIVE_VALVE` at roughly 10 units per 2 s, with
 ACTUAL: 100 -> 90 -> 80 -> 70 ...
 ```
 
+**OPEN CONTRADICTION, flagged 2026-07-28, not resolved:** a live POST to
+`STEAM_EJECTOR_STARTUP_MOTIVE_VALVE_ORDERED` during a real startup returned
+HTTP 404, `The writable variable 'STEAM_EJECTOR_STARTUP_MOTIVE_VALVE_ORDERED'
+does not exist`, the same variable name this worked example above uses for a
+successful write. Both cannot be true of the same build. This is recorded as
+open rather than resolved, on purpose: the 404 has been observed exactly
+once, and on that occasion the valve still reached its target value, driven
+by something other than this write, so the failure was not blocking. The
+worked example above is left in place rather than deleted, flagged instead:
+deleting it would silently discard the only recorded evidence that the write
+once worked. See [writable-variables.md](writable-variables.md), which lists
+the bare name `STEAM_EJECTOR_STARTUP_MOTIVE_VALVE` without the `_ORDERED`
+suffix as the writable one, a second data point for whichever side of this
+contradiction eventually turns out to be right.
+
 and on the global rod command:
 
 ```
@@ -315,3 +330,22 @@ wrong for this purpose because it wraps: a rate-limit window measured against
 actually did. `TIME_STAMP` has neither problem. Being monotonic is what makes
 it correct here: a counter that never resets cannot make a rate-limit window
 appear to restart on its own.
+
+## 14. `COOLANT_CORE_VESSEL_TEMPERATURE` reads identically to `CORE_TEMP`
+
+Measured `live-probe`: `COOLANT_CORE_VESSEL_TEMPERATURE` read `309.4696` at
+the same instant `CORE_TEMP` read `309.4696`. Byte identical, one sample.
+
+That single sample does not prove the two names are the same signal under
+all conditions, only that they agree at this one instant. `tools/monitor.py`
+now records both every snapshot and warns if they ever diverge by more than
+`1.0` (an uncalibrated heuristic, not traceable to any measured spread), so
+that question can be answered from this run's own data rather than assumed
+from one sample.
+
+See [unexplored.md](unexplored.md) for why this variable is being carried at
+all: it is the closest named thing in the manifest to VESSEL INLET
+TEMPERATURE, the value the human operator actually reads off an in-game
+gauge to make primary-pump-speed decisions with. No inlet or outlet
+temperature variable exists anywhere in the manifest, and this is not
+confirmed to be that missing variable in disguise.

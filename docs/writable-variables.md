@@ -120,6 +120,15 @@ Column meanings are in the [evidence key](../README.md#how-claims-are-marked).
 | `STEAM_EJECTOR_OPERATIONAL_MOTIVE_VALVE` | W-only | numeric | 0-100 float. GHXX formats with `.ToString("N2")` and no `CultureInfo`, a decimal-comma hazard under comma locales | confirmed | `..._ACTUAL` / `..._ORDERED` | `auto_nuke:valves.ex:74`; `GHXX:CondenserController.cs:18` |
 | `STEAM_EJECTOR_CONDENSER_RETURN_VALVE` | W-only | numeric | range unconfirmed | confirmed (name only) | `..._ACTUAL` / `..._ORDERED` | `auto_nuke:valves.ex:83` |
 
+**Open contradiction on `STEAM_EJECTOR_STARTUP_MOTIVE_VALVE`, flagged
+2026-07-28:** the row above lists the bare name as the writable variable. A
+live POST to `STEAM_EJECTOR_STARTUP_MOTIVE_VALVE_ORDERED`, the suffixed form
+used elsewhere in this repository including `tools/checklist.py` and the
+worked example in [value-semantics.md](value-semantics.md) section 3,
+returned HTTP 404 during a real startup. Not resolved. See
+[value-semantics.md](value-semantics.md) section 3 for both observations
+side by side.
+
 ## Chemical treatment (2)
 
 | Variable | Access | Payload | Values | Status | Read-back | Evidence |

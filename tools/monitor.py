@@ -132,6 +132,38 @@ TRANSPORT_FAILURES = ("URLError", "timeout", "TimeoutError",
                       "ConnectionRefusedError", "OSError", "gaierror")
 
 
+def parse_resistor_banks(raw: str) -> tuple[float | None, float | None, str | None]:
+    """Parse RESISTOR_BANKS_JSON's raw body. Returns (installed_count,
+    max_installed_temperature, error). `error` is None on a clean parse,
+    else a short description, for the caller to append to `errs` rather
+    than letting json.loads raise out of snap().
+
+    Only INSTALLED banks count towards either return value.
+    RESISTOR_BANKS_JSON reports `Temperature: 0.0` for every uninstalled
+    bank (measured live: banks 02-04 all `IsInstalled: 0`, `Temperature:
+    0.0`), and a naive max() or count over all four entries would either
+    report a fake 0.0 as the hottest bank, or inflate the installed
+    count. See docs/protection-system.md, "No resistor-bank overheat
+    protection", for the measured incident this exists to guard: a
+    single installed bank absorbing tens of MW with no automatic
+    protection of any kind.
+    """
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as e:
+        return None, None, f"malformed json ({e})"
+    resistors = parsed.get("resistors", {}) if isinstance(parsed, dict) else {}
+    installed_temps = [
+        fnum(bank.get("Temperature"))
+        for bank in resistors.values()
+        if isinstance(bank, dict) and bank.get("IsInstalled") == 1
+    ]
+    installed_temps = [t for t in installed_temps if isinstance(t, float)]
+    count = float(len(installed_temps))
+    max_t = max(installed_temps) if installed_temps else None
+    return count, max_t, None
+
+
 class Monitor:
     def __init__(self, loop: int, down_threshold: float = 10.0):
         self.i = loop - 1
@@ -221,6 +253,18 @@ class Monitor:
             "op_mode": "CORE_OPERATION_MODE",
             "core_t": "CORE_TEMP",
             "core_t_max": "CORE_TEMP_MAX",
+            # Vessel temperature. Carried alongside CORE_TEMP even though a
+            # single sample so far reads them byte identical (measured:
+            # both 309.4696 at the same instant). Two names reading the
+            # same value today does not prove they are the same signal
+            # under a transient, and finding that out requires recording
+            # both over time, which is the only thing this addition is
+            # for. This is NOT the same variable as VESSEL INLET
+            # TEMPERATURE, the value the operator actually reads off an
+            # in-game gauge to make primary-pump-speed decisions with; no
+            # inlet or outlet temperature variable exists anywhere in the
+            # manifest. See docs/unexplored.md.
+            "vessel_t": "COOLANT_CORE_VESSEL_TEMPERATURE",
             "core_p": "CORE_PRESSURE",
             "core_p_max": "CORE_PRESSURE_MAX",
             "crit": "CORE_STATE_CRITICALITY",
@@ -240,6 +284,27 @@ class Monitor:
                 vals[k] = None
             else:
                 vals[k] = fnum(v) if fnum(v) is not None else v
+
+        # RESISTOR_BANKS_JSON: the first JSON-valued variable this
+        # monitor reads. read() hands back the raw body string exactly
+        # like every other variable, so it has to be parsed here rather
+        # than trusted to arrive as a number. A parse failure is a
+        # per-variable read failure, the same fail-closed handling as
+        # everything else in this method: it goes into errs, never
+        # raises, and the two derived values stay None. See
+        # parse_resistor_banks() for why only installed banks count.
+        ok, raw = read("RESISTOR_BANKS_JSON")
+        if not ok:
+            errs.append(f"RESISTOR_BANKS_JSON: {raw}")
+            vals["res_installed"] = None
+            vals["res_max_t"] = None
+        else:
+            count, max_t, err = parse_resistor_banks(raw)
+            if err:
+                errs.append(f"RESISTOR_BANKS_JSON: {err}")
+            vals["res_installed"] = count
+            vals["res_max_t"] = max_t
+
         for k, v in vals.items():
             if isinstance(v, float):
                 self.hist.setdefault(k, deque(maxlen=30)).append(v)
@@ -617,6 +682,74 @@ class Monitor:
             if isinstance(cur, float) and isinstance(mx, float) and mx and cur > mx * frac:
                 a.append(("CRIT", f"{lbl} {cur:.0f} is above {frac:.0%} of max {mx:.0f}"))
 
+        # Vessel-temperature/core-temperature divergence check. Every
+        # sample taken so far reads them byte identical (309.4696 ==
+        # 309.4696), and this guard exists to DETECT whether that holds
+        # under a transient, not because a small gap is dangerous on its
+        # own. Firing is informative, not an emergency: it means the two
+        # names have stopped reading as the same signal, worth knowing,
+        # not worth panicking over. 1.0 is an uncalibrated heuristic,
+        # picked only to sit well above float noise and well below any
+        # plausible real divergence; it has no basis in a measured spread.
+        vessel_t, core_t = v.get("vessel_t"), v.get("core_t")
+        if isinstance(vessel_t, float) and isinstance(core_t, float):
+            vt_diff = vessel_t - core_t
+            if abs(vt_diff) > 1.0:
+                a.append(("WARN", f"vessel_t and core_t have diverged: "
+                                  f"{vessel_t:.4f} vs {core_t:.4f} "
+                                  f"({vt_diff:+.4f}). These have read "
+                                  f"identically in every prior sample; this "
+                                  f"may mean the two names are not the same "
+                                  f"signal after all"))
+
+        # Dumped power: everything generated above grid demand becomes
+        # heat in the resistor banks (docs/protection-system.md, "The
+        # operating rule this implies"), and only one bank is normally
+        # installed. CRITICAL: only computed when GENERATOR_{i}_A is
+        # above 0, because this repository established that
+        # GENERATOR_{i}_KW is a fabricated potential figure when amps
+        # read 0 (measured: 33702 kW at 0 amps) and exact, V times A over
+        # 1000, once synced (docs/value-semantics.md, section 9). At 0
+        # amps, dumped power is simply not computed, not computed as 0 or
+        # any other fallback; computing it from a fabricated KW reading
+        # would manufacture a dump alert with no basis in reality.
+        amps, gen_kw, demand = v.get("amps"), v.get("gen_kw"), v.get("demand")
+        dumped = None
+        if (isinstance(amps, float) and amps > 0
+                and isinstance(gen_kw, float) and isinstance(demand, float)):
+            dumped = gen_kw - demand * 1000
+
+        # No documented safe temperature limit exists for a resistor
+        # bank in this game, and none is invented here: an absolute
+        # number would be a fabricated limit wearing a real one's
+        # clothes, the same trap named in the secondary-inventory
+        # guard's fraction comments above. What IS unambiguous,
+        # regardless of where the real limit sits, is a bank getting
+        # hotter while it is actively absorbing dumped power with no
+        # automatic protection watching it (docs/protection-system.md,
+        # "No resistor-bank overheat protection"). Guard the trend, not
+        # a guessed threshold.
+        res_max_t = v.get("res_max_t")
+        res_trend = self.trend("res_max_t")
+        if (dumped is not None and dumped > 0
+                and isinstance(res_max_t, float) and isinstance(res_trend, float)
+                and res_trend > 0):
+            a.append(("WARN", f"resistor bank absorbing {dumped / 1000:+.1f} MW "
+                              f"dumped above demand, bank temperature "
+                              f"{res_max_t:.2f} and rising ({res_trend:+.2f} "
+                              f"over window). No interlock exists, only an "
+                              f"operator can act"))
+
+        if dumped is not None and dumped > 0 and isinstance(gen_kw, float) and gen_kw > 0:
+            dump_frac = dumped / gen_kw
+            if dump_frac > 0.5:
+                a.append(("WARN", f"{dump_frac:.0%} of generation "
+                                  f"({gen_kw:.0f} kW) is being dumped as heat, "
+                                  f"{dumped / 1000:+.1f} MW above demand. On "
+                                  f"this plant generation above demand is "
+                                  f"waste with a thermal consequence, not "
+                                  f"merely inefficiency"))
+
         p, po = v.get("pzr_p"), v.get("pzr_p_op")
         if isinstance(p, float) and isinstance(po, float):
             d = p - po
@@ -661,7 +794,8 @@ def line(v: dict) -> str:
             f"| pump {g('sec_pump')} | rpm {g('rpm')} | {g('hz','{:.2f}')}Hz "
             f"| {g('amps')}A | gen {g('gen_kw','{:.1f}')}kW | demand {g('demand')}MW "
             f"| cflow {g('core_flow')} | core {g('core_t','{:.1f}')}C {g('core_p','{:.0f}')}bar crit {g('crit','{:+.2f}')} "
-            f"| pzr {g('pzr_p','{:.1f}')}/{g('pzr_p_op')} fill {g('pzr_fill')}")
+            f"| pzr {g('pzr_p','{:.1f}')}/{g('pzr_p_op')} fill {g('pzr_fill')} "
+            f"| res {g('res_installed','{:.0f}')}x{g('res_max_t','{:.1f}')}C")
 
 
 def poll_sleep(m: Monitor, interval: float, poll: float) -> None:

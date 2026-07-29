@@ -96,6 +96,20 @@ Remember the indexing offset: checklist **LOOP 3** is API index **2**. See
 have no writable variable at all.** An automated client cannot complete this
 checklist. See [unexplored.md](unexplored.md).
 
+### `CONDENSER_VACUUM_PUMP_MODE` appears to self-transition
+
+The checklist above lists Vacuum Pump STARTUP and Vacuum Pump OPERATIONAL as
+two separate manual steps, gated on Vacuum Pressure reaching `0.1 bar` in
+between, and [writable-variables.md](writable-variables.md) documents
+`CONDENSER_VACUUM_PUMP_MODE` as a plain R/W enum with no mention of an
+automatic path. Observed live, once: the mode transitioned from `STARTUP` to
+`OPERACIONAL` with no write issued, at the moment condenser pressure reached
+that same `0.1 bar` target. Recorded as an observation, not a resolved
+mechanism: it has been seen once, the in-game checklist still frames the
+OPERATIONAL step as something to do, and it is unknown whether the
+transition is genuinely keyed on pressure or on something merely correlated
+with it in this one run.
+
 ## The resistor bank warning
 
 **Turn the resistor bank on before the generator spins up.** Without a path for
