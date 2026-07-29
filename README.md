@@ -44,9 +44,12 @@ this repository is.
 | [docs/plant-mechanics.md](docs/plant-mechanics.md) | Simulation behaviours that make telemetry easy to misread: wear vs integrity, pressurizer level, uninstalled equipment |
 | [docs/scraping.md](docs/scraping.md) | **How to regenerate every table here yourself**, and the traps that make it hard |
 
-Raw captures live in [`data/`](data/). Working tools are in [`tools/`](tools/): a
-write-probe harness implementing the measurement method, and a live tracker for
-the in-game startup checklist.
+Raw captures live in [`data/`](data/). Working tools are in [`tools/`](tools/),
+four of them: a write-probe harness implementing the measurement method
+(`probe.py`), a live tracker for the in-game startup checklist
+(`checklist.py`), a read-only steady-state monitor (`monitor.py`), and a
+manifest-drift check against the game's own advertised variable list
+(`check_manifest.py`).
 
 ## Five findings worth reading even if you skip the rest
 

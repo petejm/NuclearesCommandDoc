@@ -1,5 +1,34 @@
 # tools
 
+## `check_manifest.py`
+
+Diffs the game's own `WEBSERVER_LIST_VARIABLES_JSON` against
+[`../data/manifest.json`](../data/manifest.json) and exits non-zero on any
+drift, in either direction. Measured at build V 2.2.25.220: 332 GET names,
+91 POST names, 388 unique names in their union, zero missing either way.
+
+```bash
+python3 tools/check_manifest.py                    # live, hits the API
+python3 tools/check_manifest.py --fixture F.json    # offline, no network
+```
+
+`--fixture PATH` reads a saved JSON payload instead of the API, which is
+what makes this testable without a running game; see
+`tools/test_check_manifest.py`. The point of the tool is the same one
+[CONTRIBUTING.md](../CONTRIBUTING.md) already states for the
+`writable-variables.md` generator: a future build that adds, removes or
+renames a variable should fail the check loudly instead of the map going
+stale silently.
+
+**Duplicate names are checked separately from drift, on the raw list.** The
+drift comparison above is set-based, and a set silently dedups: a name
+duplicated within one of the four source lists (game GET, game POST,
+manifest GET, manifest POST) would change what `len(list)` reports without
+the set comparison ever seeing it. `check_manifest.py` compares
+`len(list)` against `len(set(list))` per side and reports any duplicate
+names it finds as a distinct `DUPLICATE NAMES DETECTED` condition,
+separate from `DRIFT DETECTED`, and either one is enough to exit non-zero.
+
 ## `probe.py`
 
 Measures what a POST actually does, without attributing background drift to your
@@ -336,10 +365,19 @@ coarser than requested.
 
 ```bash
 python3 tools/test_monitor.py
+python3 tools/test_check_manifest.py
 python3 -m unittest discover -s tools
 ```
 
-Both invocations run all 26 tests. Bare `python3 -m unittest` from the repo
-root discovers 0 tests: `tools/` deliberately has no `__init__.py`, and
-unittest's default recursive discovery skips directories that are not
-packages.
+There are two test files now, one per tool. `test_monitor.py` runs 48
+tests. `test_check_manifest.py` runs 25 tests. `python3 -m unittest
+discover -s tools` runs both together, 73 tests.
+
+**A single-file invocation no longer covers the whole suite.** Running only
+`test_monitor.py` skips `check_manifest.py`'s 25 tests, and running only
+`test_check_manifest.py` skips `monitor.py`'s 48. Use `discover`, or run
+both files explicitly, to exercise everything.
+
+Bare `python3 -m unittest` from the repo root discovers 0 tests: `tools/`
+deliberately has no `__init__.py`, and unittest's default recursive
+discovery skips directories that are not packages.

@@ -121,8 +121,14 @@ The 17% heater cutoff exists for a blunt reason, quoted:
 **Nucleares has no equivalent interlock.** A plant was observed live with
 `PRESSURIZER_HEATERS_ON = True` at `PRESSURIZER_FILL_LEVEL = 0.4626`, which is
 0.46%, roughly sixteen points below the real cutoff. The heaters were running
-fully uncovered. That pressurizer carried three `ALTA_TEMPERATURA` deterioration
-entries and integrity down to 90.51%.
+fully uncovered. That pressurizer carried two `deterioration_logs` entries at
+the time of that `maintenance_summary` capture, one `ALTA_PRESION` and one
+`ALTA_TEMPERATURA` (see [diagnostics-endpoint.md](diagnostics-endpoint.md),
+"Deterioration logs name the cause", same `90.51`% integrity reading), not
+three `ALTA_TEMPERATURA` entries as an earlier draft of this document stated.
+`maintenance_summary` is a stale snapshot, not live telemetry (see the same
+document, "The staleness trap"), so this deterioration history is as of that
+capture's `analysis_timestamp`, not necessarily current.
 
 This is the fourth protection found missing, and the most awkward: the API cannot
 command the heaters either, so **only a human can prevent it.** A monitor can
@@ -218,6 +224,107 @@ Community-reported working numbers for Nucleares: keep iodine generation
 gauges mid-green. The corresponding API variables are `CORE_IODINE_GENERATION`,
 `CORE_IODINE_CUMULATIVE`, `CORE_XENON_GENERATION`, `CORE_XENON_CUMULATIVE`.
 
+## Fuel depletion, rod compensation, and which constraint actually binds first
+
+Section 2.1, Reactor Physics Review (`ML11223A207`), same source as the
+xenon material above.
+
+### Measured rates
+
+`CORE_FUEL_1_FISSIONABLE` fell from `94.5660` to `94.4900` over 38 game-minutes,
+`0.12` fissionable per game-hour. At that rate, roughly `787` game-hours, about
+`32.8` game-days, remain before the loaded bay is exhausted.
+
+**`CORE_FUEL_AVG_POWER_FACTOR` is not an average of the per-bay power
+factors, despite the name.** It equals `FISSIONABLE / 100`: it reaches zero
+at the identical time the fuel does, roughly 787 game-hours out, while the
+only loaded bay's `CORE_FUEL_1_POWER_FACTOR` reads about `0.60` at the same
+moment. Those are different numbers describing different things, and the
+`AVG` in the name is misleading on this plant, where only one bay is
+loaded. Not previously documented anywhere in this repository; recorded here
+so it is not assumed from the name elsewhere.
+
+**Rod compensation rate is derived, not independently measured, and it
+lands inside the operator's own observed range, which is consistency, not
+convergence.** Computed from the fuel burn rate times the rod-per-fuel
+ratio: rods withdrawn divided by fuel consumed, `4.0` rod units over `5.53`
+fissionable gives `0.723`, and `0.723` times the `0.12`/game-hour burn rate
+gives `0.0868` rod units per game-hour. Reported separately from the
+operator's own observed practice, without reference to the calculation:
+`0.05` to `0.10` per game-hour. The derived figure falls inside that range,
+but a single point estimate landing inside a range spanning roughly a
+factor of two is consistency, not independent convergence: this is one
+derived number and one wide operator-reported band that happens to contain
+it, not two independent methods arriving at the same answer.
+
+### What real PWRs do instead, and why this plant cannot
+
+Differential control rod worth peaks at roughly **40 percent withdrawn**,
+and is **lowest** near fully inserted and near fully withdrawn (WTSM 2.1).
+This plant's rods sit at `88.5`, and `100` is fully inserted here, so the
+rods are `11.5` percent withdrawn: deep in the low-worth region, nowhere
+near the peak. The consequence is that required withdrawal-per-hour is a
+**curve**, not a constant, and should fall as the rods withdraw toward the
+worth peak rather than staying at the `0.0868` figure derived above.
+
+WTSM 2.1 also describes how a real Westinghouse plant actually compensates
+for fuel depletion: it **dilutes soluble boron** while keeping the rods
+nearly fully withdrawn, which optimises the power distribution across the
+core and preserves shutdown margin. Rods are the fine control, boron is
+the bulk compensation.
+
+**This plant has no such option, and that is a fact about its
+configuration, not about the operator.** The chemicals subsystem is
+disabled (see [value-semantics.md](value-semantics.md), "Undocumented
+readable variables"), so boron dilution is unavailable here. Rods are
+structurally the only reactivity lever this plant has, which makes rod
+life the genuine binding constraint of this configuration. State that
+plainly: this is not an operating error, it is what running without the
+chemistry subsystem means.
+
+### Constraint ranking: fuel is last, not first
+
+Every row below is recomputable on its own: measured rate, assumed limit,
+and the arithmetic that produces the time-to-limit figure.
+
+| Variable | Measured rate | Assumed limit | Time to limit |
+|---|---|---|---|
+| `CORE_WEAR` | `+0.783`/game-hour (current `29.01`) | `100` | `(100 - 29.01) / 0.783` = 90.7 game-hours = 3.8 game-days |
+| `CORE_FUEL_1_POWER_FACTOR` | `-0.00586`/game-hour (measured `0.58504` to `0.58055` over 46 game-minutes; current `0.5806`) | `0` | `0.5806 / 0.00586` = 99 game-hours = 4.1 game-days |
+| Rod travel (`ROD_BANK_POS_0_ACTUAL`) | **two regimes, see below** | `88.5` remaining before the travel limit | 9.4 game-days at the active-adjustment rate, or 42.5 game-days at the steady compensation rate |
+| Fuel (`CORE_FUEL_1_FISSIONABLE`) | `0.12`/game-hour (current `94.49`) | `0` | `94.49 / 0.12` = 787 game-hours = 32.8 game-days |
+
+**Rod travel has two rates, not one, and publishing a single number without
+saying which regime it came from is not reproducible.** `0.391` rod units
+per game-hour is the observed withdrawal rate while the operator was
+**actively adjusting** rods (`89.0` to `88.7` over 46 game-minutes). `0.0868`
+rod units per game-hour is the derived **steady compensation** rate for
+holding station against fuel depletion (see "Fuel depletion, rod
+compensation..." above). These describe two different regimes this
+repository already distinguishes elsewhere, active adjustment versus holding
+station, not one constant rate:
+
+- At the observed active-adjustment rate: `88.5 / 0.391` = 226 game-hours =
+  **9.4 game-days**.
+- At the derived steady compensation rate: `88.5 / 0.0868` = 1019 game-hours
+  = **42.5 game-days**.
+
+**Fuel, the constraint every player-facing gauge foregrounds, still does not
+bind first.** Wear binds roughly 8.6 times sooner than fuel. Where fuel
+ranks second-to-last depends on which rod-travel regime applies: at the
+active-adjustment rate, rod travel binds before fuel too, at 9.4 days; at
+the steady compensation rate, rod travel binds after fuel, at 42.5 days.
+That is not a contradiction in the ranking, it is the regime distinction
+above determining the order.
+
+Two of these figures also carry an honest caveat the ranking itself does
+not show: the `CORE_WEAR` and `CORE_FUEL_1_POWER_FACTOR` figures depend on
+assumed limits, `100` and `0` respectively, neither confirmed as a hard
+ceiling for those specific variables, and every figure here comes from
+linear extrapolation of short observation windows on a plant whose rates
+are not guaranteed constant. Treat this ranking as a snapshot of the
+current trajectory, not a certified schedule.
+
 ## The unifying pattern: fast signals lie during transients
 
 Three independent systems in this manual share one structure, and it is the most
@@ -295,6 +402,65 @@ This document was chosen over [operations.md](operations.md) for this
 section because it is a control-theory methodology note, not a procedure or
 setpoint, and it sits alongside this file's other control-law material
 rather than the startup and shutdown checklists.
+
+### A settled-gain measurement, not a full characterization: primary flow versus core temperature
+
+The first clean data point this method has produced, put here because it
+is what the section above calls for and because the earlier confounded
+attempts are recorded honestly rather than quietly dropped.
+
+**This is a settled-gain measurement, not a full step-response
+characterization.** The section above defines characterization as gain plus
+dead time plus time constant, three numbers. Only gain was measured in this
+run. Dead time (the delay before core temperature starts moving) and time
+constant (time to reach 63.2 percent of the total change) were **not
+measured here and remain open.**
+
+Primary circulation was stepped from 25 to 30 and held there for 300 real
+seconds, roughly 120 game-minutes at this session's time acceleration of
+approximately 24x. Real wall-clock time is the wrong clock for a rate under
+time acceleration (see [value-semantics.md](value-semantics.md), section
+13), which is why the game-clock figure is given here alongside the raw
+real-time duration the measurement was actually taken against. The baseline
+was independently verified settled going into the step, drifting at only
+`-0.045` C/min. Core temperature moved from `339.55` to `336.74` C over the
+hold, a raw change of `2.81` C.
+
+**Two gain figures follow from that; use the drift-corrected one.** Over the
+300 second hold, the settled `-0.045` C/min baseline drift accounts for
+`0.225` C of the 2.81 C move on its own, before primary flow is credited
+with any of it:
+
+| | Change | Gain per unit of primary flow |
+|---|---|---|
+| Raw | `2.81` C | `-0.562` C |
+| Drift-corrected (`2.81 - 0.225`) | `2.585` C | `-0.517` C |
+
+**`-0.517` C per unit of primary flow, the drift-corrected figure, is the
+one to use.** Publishing the raw gain without subtracting the settled
+baseline drift attributes part of the plant's own background drift to the
+step, which is exactly the matched-null discipline this repository's probe
+harness enforces on every POST (see [tools/README.md](../tools/README.md),
+"Multi-sample matched nulls" and "No baked-in constants"). The same
+discipline applies here even though this measurement was taken by hand
+rather than through `probe.py`.
+
+**Settling evidence.** An independent check taken at the end of the 300
+second hold measured temperature still moving at `-0.04` C/min, close to
+the `-0.045` C/min baseline it started from and far below the rate during
+the active part of the transient. That is the basis for treating the hold
+as settled by t=300 rather than still actively responding to the step.
+
+**Zero rod corrections were required.** The 2.81 C excursion stayed inside
+a 3.0 C deadband for the whole run. That deadband is not a game or repo
+constant: it is the tolerance configured in this session's own hold-test
+harness, an operator-chosen tolerance for this run, not a documented plant
+setpoint.
+
+**Confounder check passed.** Rods, MSCV, `POWER_DEMAND_MW`, condenser
+pressure and `CORE_STATE` each held exactly one distinct value for the
+entire 300 seconds, which is what makes this attributable to primary flow
+alone rather than another cautionary confounded case like the two above.
 
 ## Mapping the manual to Nucleares systems
 

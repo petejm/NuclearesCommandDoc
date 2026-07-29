@@ -215,6 +215,11 @@ raw index, generator labels use the physical number, in the same payload.
 **Do not infer the convention from a name.** Check `_INSTALLED`, or match
 against `attention_items`, or confirm against the in-game panel.
 
+Also remember `attention_items` lives inside `maintenance_summary`, which is a
+**stale snapshot, not live telemetry**. See
+[diagnostics-endpoint.md](diagnostics-endpoint.md), "The staleness trap", before
+quoting an `object_id` or a wear figure from it as current.
+
 ## 9. `GENERATOR_{n}_KW` is trustworthy exactly when `GENERATOR_{n}_A` is greater than 0
 
 Two things are true about this variable, from two different regimes, and both
@@ -349,3 +354,107 @@ TEMPERATURE, the value the human operator actually reads off an in-game
 gauge to make primary-pump-speed decisions with. No inlet or outlet
 temperature variable exists anywhere in the manifest, and this is not
 confirmed to be that missing variable in disguise.
+
+## 15. The `*_STATUS` enum: `2` is installed and running, `4` is absent or disabled, for a 30-name subset of the 35 that exist
+
+Undocumented until now. Measured `live-probe` against the running plant, two
+independent sources agreeing.
+
+**The manifest has 35 names ending `_STATUS`. Only 30 of them return the
+numeric enum described below.** The other five are not numeric at all,
+MEASURED:
+
+| Variable | Value |
+|---|---|
+| `AO_AGENT_STATUS` | a JSON object, not numeric |
+| `RODS_STATUS` | empty / unreadable |
+| `EMERGENCY_GENERATOR_1_STATUS` | `INACTIVO` |
+| `EMERGENCY_GENERATOR_2_STATUS` | `INACTIVO` |
+| `CONDENSER_CIRCULATION_PUMP_OVERLOAD_STATUS` | `False` |
+
+Everything below this point describes that 30-name numeric subset only, not
+all 35 `*_STATUS` names.
+
+Exactly three of the numeric subset read `2`: `COOLANT_CORE_CIRCULATION_PUMP_2_STATUS`,
+`COOLANT_SEC_CIRCULATION_PUMP_2_STATUS` and `STEAM_GEN_2_STATUS`. Those are
+precisely the components `INSTALLED_LOOPS_JSON` marks installed on this plant,
+loop 2 only, matching the `_INSTALLED` pattern documented in
+[plant-mechanics.md](plant-mechanics.md), "Uninstalled equipment reports
+confident values".
+
+The remaining 27 numeric `*_STATUS` variables observed reading `4` fall into
+two groups: the chemical pumps, whose subsystem the operator has disabled,
+and loops 0 and 1, which were never installed on this plant. Two different
+reasons for the same reading, both consistent with `4` meaning "not
+running", not with any single specific cause.
+
+**Working reading, scoped to the numeric subset: `2` = installed and
+running, `4` = absent or disabled.** Honestly incomplete in two ways: only
+these two values were observed, and this covers only the 30 of 35
+`*_STATUS` names that return a number at all. The other 5 names use their
+own non-numeric conventions entirely, listed above, and the rest of the
+numeric enum, whatever a fault state or a starting-up state reads as, is
+unknown.
+
+## 16. Undocumented readable variables: `CORE_WEAR`, `CORE_FACTOR`, `CORE_FACTOR_CHANGE`, and the `CHEM_BORON_*` family
+
+All readable, none previously documented anywhere in this repository.
+
+**`CORE_WEAR`** read `28.41` rising to `29.01` over the sampling window, a
+rate of `+0.783` per game-hour. If `100` is the wear limit, the same one that
+applies to every other component in this repository's wear-versus-integrity
+model (see [plant-mechanics.md](plant-mechanics.md)), that rate implies
+roughly 3.8 game-days to reach it. **That limit is not confirmed for the
+core specifically.** It is an assumption carried over from the general wear
+model, not a measured ceiling for this variable.
+
+**`CORE_FACTOR`** read `3.00` rising to `3.25`, `+0.325` per game-hour.
+**`CORE_FACTOR_CHANGE`** read `2.85` rising to `3.06`, `+0.273` per
+game-hour. Both readable, both moving, and **their meaning is unknown**. No
+further speculation beyond that.
+
+**The `CHEM_BORON_*` readable family**, `CHEM_BORON_PPM`,
+`CHEM_BORON_DOSAGE_ACTUAL`, `CHEM_BORON_DOSAGE_ORDERED`,
+`CHEM_BORON_FILTER_ACTUAL` and `CHEM_BORON_FILTER_ORDERED`, all read `0` on
+this plant. That is not a finding about boron chemistry, it is a finding
+about this plant's configuration: the operator has the chemicals subsystem
+disabled. **Do not treat a `0` reading here as evidence about how boron
+behaves when the subsystem is enabled.** It is an off switch, not a
+measurement.
+
+**NAME-BASED HYPOTHESIS, no measurement behind it: the two boron writables
+might command a rate rather than a target.** `CHEM_BORON_DOSAGE_ORDERED_RATE`
+and `CHEM_BORON_FILTER_ORDERED_SPEED` (both listed in
+[writable-variables.md](writable-variables.md), rated `confirmed (name only)
+/ range unconfirmed` in the "Chemical treatment" table) carry `RATE` and
+`SPEED` in their names, which reads as a rate of change rather than a
+concentration or a position.
+
+**That naming argument is weak, and here is why: it is contradicted seven
+times over by this same writable surface.**
+`COOLANT_CORE_CIRCULATION_PUMP_0_ORDERED_SPEED`,
+`COOLANT_CORE_CIRCULATION_PUMP_1_ORDERED_SPEED`,
+`COOLANT_CORE_CIRCULATION_PUMP_2_ORDERED_SPEED`,
+`COOLANT_SEC_CIRCULATION_PUMP_0_ORDERED_SPEED`,
+`COOLANT_SEC_CIRCULATION_PUMP_1_ORDERED_SPEED`,
+`COOLANT_SEC_CIRCULATION_PUMP_2_ORDERED_SPEED` and
+`CONDENSER_CIRCULATION_PUMP_ORDERED_SPEED` are all documented in
+[writable-variables.md](writable-variables.md) as 0-100 int percent, an
+ordinary level target the actuator slews toward, exactly the pattern
+section 3 above describes for `_ORDERED` variables generally. `SPEED` in a
+name is therefore already used for a level target seven times over on this
+API, which undercuts, rather than supports, reading the boron `SPEED`/`RATE`
+pair as something structurally different just because of what the name
+says.
+
+**This cannot be tested on this plant.** The chemicals subsystem is
+disabled here (see above, this section), so no write to either boron
+variable can be observed producing an effect one way or the other. The one
+boron write that was tried, `CHEM_BORON_FILTER_ORDERED_SPEED`, never moved
+its own `_ORDERED` off `0` for any value posted (see section 7 above),
+which is consistent with the subsystem being off and is not evidence for or
+against the rate-versus-target question either way.
+
+Treat this as an open, unmeasured naming hypothesis, not a documented
+interface difference, until a plant with the chemistry subsystem enabled
+can be probed.

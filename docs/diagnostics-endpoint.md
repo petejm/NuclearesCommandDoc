@@ -23,7 +23,7 @@ Seven top-level sections at build V 2.2.25.220:
 | `active_alarms` | Currently firing alarms |
 | `situations` | Active scenario events |
 | `pressure_trend` | Historical pressure entries |
-| `maintenance_summary` | 131 tracked elements, with per-item integrity, wear, and **`deterioration_logs` giving the reason each item was damaged** |
+| `maintenance_summary` | `element_count` varies per capture, 131 in the example below and 128 in a later capture cited further down this document, with per-item integrity, wear, and **`deterioration_logs` giving the reason each item was damaged** |
 
 ## Why it matters more than the batch endpoint
 
@@ -78,6 +78,23 @@ The payload says so, in fields that are easy to skim past:
 `age_minutes` **counts up between calls** (observed 209 then 222). Every
 integrity, wear and deterioration figure under `attention_items` is as of
 `analysis_timestamp`, not now.
+
+A second, later capture makes the point harder to miss: `age_minutes` read
+**1431**, roughly 23 game-hours stale. At that age, `maintenance_summary`
+reported `element_count: 128`, `attention_count: 4`, with these four
+elements flagged and their `wear_percent`:
+
+```
+CORE                          15.91
+condenser circulation pump    13.79
+resistor bank                 13.04
+transformer                   19.29
+```
+
+**Always check `age_minutes` before quoting anything from `maintenance_summary`,
+in every place this data is quoted, not just here.** A 23-hour-old wear
+figure presented as current is a wrong answer with a confident number
+attached.
 
 Only two components expose live integrity as ordinary variables:
 
@@ -135,6 +152,18 @@ reset. Posting it produced no change in `AO_AGENT_STATUS` and no change in
 `POWER_FROM_EXTERNAL_KW`, against a matched null. The 60 kW delta recorded in an
 earlier session was coincidence.
 
+**This qualifies, rather than contradicts, the claim that the AO subsystem is
+inert without the DLC** ([unexplored.md](unexplored.md) makes exactly that
+claim about `RESET_AO`). Two things are true of the same payload at once:
+`AO_AGENT_STATUS` reports `dlc_installed: false` and `runtime_state:
+NoInstalado`, and in that same call `maintenance_summary` reports `available:
+true`, `status: ready`, with real per-component data (see "The staleness
+trap" above). The inert part is the conversational LLM agent specifically.
+The maintenance journal, the causal deterioration logs, and the rest of the
+structured plant model are a separate feature that runs whether or not the
+DLC is installed. Do not read "AO subsystem is inert" as covering
+`AO_AGENT_DIAGNOSTICS_JSON` as a whole. It does not.
+
 ## Gotcha: uninstalled equipment still reports confident values
 
 At capture time:
@@ -158,3 +187,30 @@ The same applies to `maintenance_summary.attention_items`: it lists what is
 actually installed, by real object name (`TG_2`, `GE_Generador03`,
 `BC_2_REFRIGERANTE_CIRCULACION`), which is a more reliable equipment inventory
 than probing indexed variable names.
+
+## Open contradiction, flagged and not resolved: `circulation_pumps_dry` versus the flat `_DRY_STATUS` variable
+
+`pressure_loss_factors.circulation_pumps_dry` reports `running_dry: true` for
+primary pump indices `0`, `1` **and** `2`. Pumps 0 and 1 do not exist on this
+plant, only pump 2 is installed (see
+[plant-mechanics.md](plant-mechanics.md), "Primary circulation rate is a
+first-order input"), so those two entries are at best noise about equipment
+that is not there.
+
+Pump 2 is the one that matters, and it is where the two sources disagree.
+Measured at the same moment: pump 2 was circulating at 25 percent, with
+`coolant_flow_in` 50.0 and `coolant_flow_out` 50.0, both nonzero and equal.
+Its own flat variable, `COOLANT_CORE_CIRCULATION_PUMP_2_DRY_STATUS`, read
+`4`, which section 15 of [value-semantics.md](value-semantics.md) establishes
+as "absent or disabled", not running dry. The structured diagnostic says this
+pump is running dry. The flat telemetry says it is not, and is moving flow
+in both directions at once.
+
+**This is recorded as an open contradiction, not resolved either way.** The
+two pumps that do not exist are easy to write off as the diagnostic
+including uninstalled equipment, the same pattern documented elsewhere in
+this file. The one pump that does exist is not so easy to write off, and
+nothing in this session's data says which source is right. Do not pick a
+side. If a future capture resolves this, whichever source turns out to be
+correct, document the resolution here rather than quietly changing which
+one gets cited.

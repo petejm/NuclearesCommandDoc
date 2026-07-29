@@ -30,6 +30,59 @@ cutoff and the SG low-low level trip among them: the real threshold lives on
 an in-game gauge or in operator judgement, not in anything the API exposes.
 See [protection-system.md](protection-system.md), "The calibration gap".
 
+## Efficiency Factor: a second operator-visible, API-invisible gauge
+
+The in-game "Efficiency Factor" gauge read `87.47` at capture time, and there
+is no API variable for it.
+
+This is provable, not merely a failed search. An exhaustive scan of all 332
+readable GET variables at multiple scales, plus the contents of every JSON
+payload the API serves, found nothing matching. And the manifest is
+complete with respect to the game's own advertised variable list: 388 of
+388 names accounted for both directions, see
+[`../tools/check_manifest.py`](../tools/check_manifest.py). That is not the
+same claim as "the webserver serves nothing outside the manifest": this
+repository documents 55 valve identifiers the webserver actually serves
+outside it, with **0 overlap** against the 332 GET plus 91 POST names (see
+[valves.md](valves.md)), so the manifest is provably complete only against
+the game's own advertised list, not against everything the webserver can be
+made to return. That narrower completeness is still what turns "nothing
+matched" into a real instrumentation gap instead of a documentation
+failure. A search that might have missed a name proves nothing; a search
+that is checked complete against the advertised list does.
+
+**This is plausibly `100` minus a wear percentage, but `12.53` itself is not
+a measured value.** It is back-computed from the hypothesis:
+`100 - 87.47 = 12.53`. No component was observed at 12.53 percent wear
+anywhere in this session's data. Describing it as sitting among the wear
+values `maintenance_summary` reported would imply it was observed; it was
+not. It is the number the hypothesis requires for the subtraction to come
+out even, nothing more.
+
+The wear values that **were** observed in `maintenance_summary` (`15.91`,
+`13.79`, `13.04`, `19.29`, see [diagnostics-endpoint.md](diagnostics-endpoint.md))
+came from a capture with `age_minutes` `1431`, roughly 23 game-hours stale by
+the time it was read. A reading that old cannot confirm or refute a live
+gauge value regardless of what it says, so those four numbers cannot be used
+to test the `12.53` hypothesis either way. This is a genuine weakness in the
+hypothesis, not a footnote: the one piece of maintenance data available to
+check against it is too stale to check anything against, and the figure the
+hypothesis actually needs was never independently observed at all.
+
+**Label this an unconfirmed hypothesis fitted to a single observation, and
+treat it that way.** One observation cannot identify a formula: a
+brute-force search over variable pairs returned 74 spurious matches at a
+0.05 tolerance, including a pressurizer temperature divided by a pump
+status code. Nothing about that search distinguishes a real formula from
+coincidence, it only shows that at this tolerance, coincidence is common.
+The `100 - 12.53` match is not stronger evidence than any of those 74, it
+is simply the one that happens to have a plausible-sounding story attached.
+
+This is the **second** operator-critical, API-invisible signal, after
+reactor vessel inlet temperature above. State the consequence plainly: an
+advisory client built on this API cannot see two of the signals the
+operator actually steers by.
+
 ## Not commandable at all
 
 `VALVE_M01_OPEN`, `VALVE_M02_OPEN` and `VALVE_M03_OPEN` are **GET-only**
@@ -143,6 +196,15 @@ so the record shows what was asked and what came back.
    `POWER_FROM_EXTERNAL_KW` against a matched null. `AO_AGENT_STATUS` reports
    `runtime_state: NoInstalado` and `dlc_installed: false`, so there is no agent
    to reset. The earlier 60 kW delta was coincidence.
+
+   **Qualify this, do not generalise it.** "No agent to reset" is true of the
+   AO's LLM runtime specifically. It is not true of `AO_AGENT_DIAGNOSTICS_JSON`
+   as a whole: that endpoint's `maintenance_summary` section returns
+   `available: true`, `status: ready`, and real per-component data, in the
+   same payload where `AO_AGENT_STATUS` reports `dlc_installed: false`. The
+   maintenance journal runs without the DLC. Only the conversational agent is
+   absent. See [diagnostics-endpoint.md](diagnostics-endpoint.md), "Gotcha: it
+   works with the AO DLC uninstalled".
 
 Still open, ranked by value per unit of effort:
 
