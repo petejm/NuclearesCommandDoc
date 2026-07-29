@@ -37,13 +37,29 @@ Design notes, each from a failure this repository documents:
   plant condition. But when the regime itself can't be read, that is a reason
   to treat the plant as if it were at power, not a reason to go quiet. See
   `regime()`.
+
+* **Fail closed applies to the observation channel too, not just a
+  variable.** A monitor instance was found running 2 hours after the game
+  had exited, having written 5,740 lines that were entirely per-variable
+  "unreadable ...: URLError" ERROR alerts, one per variable, roughly 24 per
+  cycle. It never once said the webserver was gone, only that every
+  individual thing it asked for had failed. An outage is a fact about the
+  monitor's ability to see, not about any one variable, and it is reported
+  as one. See `Monitor.note_liveness()`, `Monitor.outage_secs()`, and the
+  outage guard in `alerts()`.
+
+* **A threshold finer than the sample period is decorative.** `--interval`
+  defaults to 15s; a 10s outage threshold checked only once per snapshot
+  could never actually fire within its own window, an outage could start
+  and end entirely between two samples. `--poll` exists to check liveness
+  more often than snapshots are taken, independent of `--interval`.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import socket
 import sys
 import time
 import urllib.request
@@ -52,13 +68,26 @@ from collections import deque
 BASE = "http://localhost:8785"
 
 
-def listener_up() -> bool:
+def api_alive(timeout: float = 1.0) -> bool:
+    """Liveness probe, socket-based rather than shelling out to `ss`.
+
+    `ss` is Linux only, and this gets called once per poll interval for
+    hours at a time (see --poll below), so a subprocess per check is wasted
+    work a plain connect avoids.
+
+    CRITICAL: the host must be the literal string "localhost", never
+    "127.0.0.1". docs/wire-format.md documents that this API binds
+    `[::1]:8785`, IPv6 loopback only. A v4 literal would never resolve to
+    that socket, so a hardcoded "127.0.0.1" here would make this probe
+    report a permanent false outage regardless of whether the game is
+    actually running. "localhost" lets the resolver pick the address
+    family that actually works.
+    """
     try:
-        out = subprocess.run(["ss", "-lntn"], capture_output=True,
-                             text=True, timeout=5).stdout
-    except Exception:
+        with socket.create_connection(("localhost", 8785), timeout=timeout):
+            return True
+    except OSError:
         return False
-    return ":8785" in out
 
 
 def read(name: str):
@@ -82,8 +111,18 @@ def fnum(v):
         return None
 
 
+# read() formats a transport-level failure as f"{name}: {type(e).__name__}"
+# (see read() above). These are the exception class names that can appear
+# there for a socket/HTTP failure, as opposed to "no such variable" or an
+# empty/null body, which are informative reads about one specific name, not
+# evidence the API itself is gone. This distinction is what lets alerts()
+# tell "the whole plant went dark" apart from "this one variable is broken".
+TRANSPORT_FAILURES = ("URLError", "timeout", "TimeoutError",
+                      "ConnectionRefusedError", "OSError", "gaierror")
+
+
 class Monitor:
-    def __init__(self, loop: int):
+    def __init__(self, loop: int, down_threshold: float = 10.0):
         self.i = loop - 1
         self.loop = loop
         self.hist: dict[str, deque] = {}
@@ -93,6 +132,48 @@ class Monitor:
         # the comments at both use sites for why this is a run-local
         # reference and not a plant nominal.
         self.sec_liq_ref: float | None = None
+
+        # Outage tracking. A monitor found running 2 hours after the game
+        # had exited had written 5,740 lines, entirely per-variable
+        # "unreadable ...: URLError" ERROR alerts, and never once said the
+        # webserver was gone. down_since and last_outage_secs exist to turn
+        # "every variable is suddenly unreadable" into the single fact it
+        # actually is: an outage, with a duration, that either resolves
+        # briefly (save load, benign, see docs/wire-format.md) or persists
+        # (game exited or crashed, not benign).
+        self.down_threshold = down_threshold
+        # Monotonic timestamp of the first observed failure, None while
+        # healthy. time.monotonic(), not time.time(): this is a duration
+        # measurement and wall clock can jump under NTP or suspend/resume,
+        # which would corrupt an outage duration silently.
+        self.down_since: float | None = None
+        # Duration of the most recently completed outage, held only long
+        # enough to report once on the recovery snapshot, then reset to 0.
+        self.last_outage_secs: float = 0.0
+
+    def note_liveness(self, alive: bool, now: float) -> None:
+        """Record a liveness observation. `now` is a caller-supplied
+        time.monotonic() value rather than one taken internally, so tests
+        can drive falling and rising edges deterministically without
+        sleeping.
+
+        Idempotent: calling this repeatedly with the same `alive` value
+        while already in that state does nothing further, so it is safe to
+        call once per poll tick (see --poll) as well as once per snapshot.
+        """
+        if not alive:
+            if self.down_since is None:
+                self.down_since = now  # falling edge
+            return
+        if self.down_since is not None:
+            self.last_outage_secs = now - self.down_since  # rising edge
+            self.down_since = None
+
+    def outage_secs(self, now: float) -> float:
+        """0.0 when healthy, else how long the current outage has run."""
+        if self.down_since is None:
+            return 0.0
+        return now - self.down_since
 
     def snap(self) -> tuple[dict, list[str]]:
         i = self.i
@@ -169,10 +250,75 @@ class Monitor:
         # not carrying load at NOMINAL, which is what "startup" means here.
         return "startup"
 
-    def alerts(self, v: dict, errs: list[str]) -> list[tuple[str, str]]:
+    def alerts(self, v: dict, errs: list[str],
+               now: float | None = None) -> list[tuple[str, str]]:
+        """`now` defaults to time.monotonic() so existing callers, and the
+        pre-outage-guard tests, keep working unchanged. main() passes an
+        explicit value taken once per loop iteration instead, so every
+        guard evaluated in one pass agrees on what "now" was.
+
+        ASSERTION (not a runtime assert, just the invariant this file
+        depends on): during an outage, a is never empty. See the outage
+        guard below. That is what stops main() from printing "all guards
+        clear" while the plant is actually unobserved, which is the exact
+        failure this file exists to close: a monitor that goes quiet is
+        indistinguishable from a monitor that checked and found nothing
+        wrong, and only one of those is true during an outage.
+        """
+        if now is None:
+            now = time.monotonic()
         a: list[tuple[str, str]] = []
-        for e in errs:
-            a.append(("ERROR", f"unreadable {e}"))
+
+        # A wholesale outage and a single bad variable are different facts
+        # and must not be conflated. A monitor left running after the game
+        # exited was observed to write 5,740 lines over 2 hours, all of
+        # them "[ERROR] unreadable <NAME>: URLError", one line per variable,
+        # roughly 24 per cycle, and never once said the webserver was gone.
+        # If every entry in errs is a transport failure (see
+        # TRANSPORT_FAILURES) and there are more than a handful of them,
+        # that is one fact: the API is unreachable. Collapse it to one
+        # alert. A single unreadable variable, or a mix of transport and
+        # non-transport failures, is a different, genuine per-variable
+        # signal (for example a name that does not exist on this build) and
+        # must not be hidden inside a collapsed summary.
+        transport = [e for e in errs if e.endswith(TRANSPORT_FAILURES)]
+        if errs and len(transport) == len(errs) and len(errs) > 3:
+            reason = ", ".join(sorted({e.rsplit(": ", 1)[-1] for e in errs}))
+            a.append(("ERROR", f"API unreachable: all {len(errs)} variables "
+                               f"unread ({reason})"))
+        else:
+            for e in errs:
+                a.append(("ERROR", f"unreadable {e}"))
+
+        # Outage guard. During an outage every value in v is None, so every
+        # guard below this point is naturally inert, each already checks
+        # isinstance(x, float) before firing. That silence is exactly the
+        # danger: fail closed applied to a single variable means "raise an
+        # ERROR for that variable", but fail closed applied to the whole
+        # observation channel means the operator needs to be told the
+        # channel itself is gone, not just that nothing below fired. This
+        # alert is that message, and it is the reason a can never be empty
+        # while self.down_since is set.
+        #
+        # secs == 0 and briefly < threshold cover the benign case: the
+        # webserver unbinds on save load (docs/wire-format.md), so a short
+        # outage is expected and is downgraded to WARN rather than treated
+        # as a plant failure. secs >= threshold means the outage has run
+        # longer than a save load plausibly takes, so it escalates to CRIT:
+        # either the game exited or crashed, not the same condition.
+        secs = self.outage_secs(now)
+        if secs == 0:
+            if self.last_outage_secs > 0:
+                a.append(("WARN", f"API was unreachable for "
+                                  f"{self.last_outage_secs:.0f}s, readings resumed"))
+                self.last_outage_secs = 0.0  # report the recovery once, not every snapshot
+        elif secs < self.down_threshold:
+            a.append(("WARN", f"API unreachable for {secs:.0f}s. Expected "
+                              f"briefly during a save load, the webserver unbinds"))
+        else:
+            a.append(("CRIT", f"API unreachable for {secs:.0f}s, beyond the "
+                              f"{self.down_threshold:.0f}s threshold. The plant is "
+                              f"UNOBSERVED, no guard below is running"))
 
         # Regime gates severity below. Per regime()'s docstring, "unknown"
         # must never suppress, so gated guards treat "unknown" exactly like
@@ -363,6 +509,51 @@ def line(v: dict) -> str:
             f"| pzr {g('pzr_p','{:.1f}')}/{g('pzr_p_op')} fill {g('pzr_fill')}")
 
 
+def poll_sleep(m: Monitor, interval: float, poll: float) -> None:
+    """Sleep `interval` seconds, but check liveness every `poll` seconds
+    instead of only at the next snapshot.
+
+    This is what makes --down-threshold actually observable. --interval
+    defaults to 15s; a 10s outage threshold checked only once per snapshot
+    could begin and fully end inside a single sleep, invisible to anyone
+    watching. A threshold finer than the sample period is decorative unless
+    something polls faster than it samples, this is that something.
+
+    Paced against a monotonic deadline rather than by subtracting the sleep
+    steps, because api_alive() is not free: its timeout is 1s, and a probe
+    that HANGS (a dropped SYN rather than a refused connection) burns most
+    of that. Counting only the sleeps would let a 15s interval take 30s of
+    wall clock during exactly the outage this function exists to watch, and
+    the sample rate would silently halve when it matters most. Charging the
+    probe's own cost against the deadline keeps the snapshot cadence honest.
+
+    Does not swallow KeyboardInterrupt, it propagates straight out of
+    time.sleep() to main()'s existing try/except.
+
+    Prints a transition line the instant the API goes down or comes back,
+    rather than waiting for the next snapshot to notice up to `interval`
+    seconds later, because a human watching the terminal wants to know at
+    the moment it happens.
+    """
+    deadline = time.monotonic() + interval
+    while True:
+        now = time.monotonic()
+        remaining = deadline - now
+        if remaining <= 0:
+            return
+        time.sleep(poll if poll < remaining else remaining)
+        was_down = m.down_since is not None
+        m.note_liveness(api_alive(), time.monotonic())
+        now_down = m.down_since is not None
+        if now_down != was_down:
+            ts = time.strftime("%H:%M:%S")
+            if now_down:
+                print(f"{ts}  [WARN] API went unreachable")
+            else:
+                print(f"{ts}  [WARN] API reachable again after "
+                      f"{m.last_outage_secs:.0f}s")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -373,20 +564,52 @@ def main() -> int:
                      help="seconds to sleep between snapshots")
     ap.add_argument("--count", type=int, default=0, help="0 = run until interrupted")
     ap.add_argument("--log", help="append TSV here")
+    # Both defaults below are uncalibrated heuristics, not measurements.
+    # Nothing in this repository records how long the webserver actually
+    # stays unbound across a save load, which is the one number that would
+    # calibrate --down-threshold: it wants to sit above a normal save load
+    # and below a crash. 10s is a guess pending that measurement. --poll at
+    # 1s is chosen only to be comfortably finer than that threshold, so the
+    # threshold is resolvable, see poll_sleep() and the granularity warning
+    # below. Measure a save load and set both from it.
+    ap.add_argument("--down-threshold", type=float, default=10.0,
+                     help="seconds of continuous API unreachability before "
+                          "the outage alert escalates from WARN to CRIT")
+    ap.add_argument("--poll", type=float, default=1.0,
+                     help="how often liveness is checked while sleeping "
+                          "between snapshots, independent of --interval")
     a = ap.parse_args()
 
-    if not listener_up():
+    # The period-vs-threshold granularity trap: a threshold cannot be
+    # resolved any finer than the period it is checked against. Warn, don't
+    # exit, the run is still usable, just coarser than what was asked for.
+    if a.down_threshold < a.poll:
+        print(f"warning: --down-threshold ({a.down_threshold:.1f}s) is "
+              f"finer than --poll ({a.poll:.1f}s), it cannot be resolved "
+              f"more finely than the poll period", file=sys.stderr)
+
+    if not api_alive():
         print("Webserver not listening on 8785 (it unbinds on save load).",
               file=sys.stderr)
         return 1
 
-    m = Monitor(a.loop)
+    m = Monitor(a.loop, down_threshold=a.down_threshold)
     log = open(a.log, "a") if a.log else None
     n = 0
     try:
         while a.count == 0 or n < a.count:
             v, errs = m.snap()
-            al = m.alerts(v, errs)
+            now = time.monotonic()
+            # "Snapshot succeeded" means at least one variable read OK, not
+            # "errs is empty". read()/snap() only ever leave vals[k] as None
+            # on the failure path, so any non-None value is proof the API
+            # answered at least one request this tick, even if the rest of
+            # the batch failed. That is enough to call this tick alive; a
+            # single bad variable name is a different problem from the API
+            # being gone, see TRANSPORT_FAILURES and alerts().
+            snapshot_ok = any(x is not None for x in v.values())
+            m.note_liveness(snapshot_ok, now)
+            al = m.alerts(v, errs, now)
             ts = time.strftime("%H:%M:%S")
             print(f"{ts}  {line(v)}")
             for sev, msg in al:
@@ -398,7 +621,7 @@ def main() -> int:
                 log.flush()
             n += 1
             if a.count == 0 or n < a.count:
-                time.sleep(a.interval)
+                poll_sleep(m, a.interval, a.poll)
     except KeyboardInterrupt:
         pass
     finally:

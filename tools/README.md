@@ -159,6 +159,7 @@ operator.
 ```bash
 python3 tools/monitor.py --loop 3 --interval 15
 python3 tools/monitor.py --loop 1 --interval 10 --count 20 --log run.tsv
+python3 tools/monitor.py --loop 3 --down-threshold 10 --poll 1
 ```
 
 `--loop` selects **which** secondary loop to watch, 1, 2 or 3. It is not a
@@ -172,7 +173,7 @@ safety guarantee, rather than a flag someone could flip.
 
 | Severity | Meaning |
 |---|---|
-| `ERROR` | A variable could not be read. Never collapses into a healthy reading |
+| `ERROR` | A variable could not be read. Never collapses into a healthy reading, except for a wholesale API outage, see below, which is one fact and is reported once |
 | `CRIT` | Needs operator action now |
 | `WARN` | Needs attention, not yet urgent |
 | `INFO` | A condition that would be WARN or CRIT at power, downgraded because `regime()` has positively established the plant is in startup. Downgraded, not suppressed, it still prints every time |
@@ -259,6 +260,72 @@ one run with no intervention.
 
 An unreadable variable raises `ERROR`. It never reads as healthy.
 
+### The API outage watch
+
+A monitor instance was once found running 2 hours after the game had
+exited. It had written 5,740 lines and 370 KB, entirely per-variable
+`[ERROR] unreadable <NAME>: URLError` alerts, roughly 24 of them per cycle,
+one for every watched variable. It never once said the webserver was gone,
+only that every individual thing it asked for had failed. That is the
+defect this section closes.
+
+**`localhost`, never `127.0.0.1`.** Liveness is checked with a plain socket
+connect, `api_alive()`, to `("localhost", 8785)`. The host must resolve
+through the name, not a hardcoded IPv4 literal:
+[`../docs/wire-format.md`](../docs/wire-format.md) documents that this API
+binds `[::1]:8785`, IPv6 loopback only. A `127.0.0.1` literal would never
+reach that socket, so a client hardcoding it would report a permanent false
+outage regardless of whether the game is actually running. `api_alive()`
+replaces the older `ss`-based check: `ss` is Linux only, and this gets
+called on every poll tick for hours at a time, so a subprocess per check is
+wasted work a plain connect avoids.
+
+**The ERROR collapse rule.** A wholesale outage and a single bad variable
+are different facts and must not be conflated. If every entry in one
+snapshot's error list is a transport-level failure (`URLError`, `timeout`,
+`TimeoutError`, `ConnectionRefusedError`, `OSError`, `gaierror`, the names
+`read()` can produce for a socket/HTTP failure) and there are more than a
+handful of them, `alerts()` collapses them to a single
+`API unreachable: all N variables unread (...)` `ERROR`. A single
+unreadable variable, or a mix of transport and non-transport failures (for
+example a name that does not exist on this build, alongside real transport
+failures), is a genuine per-variable signal and is **not** collapsed, it
+still gets its own `unreadable <NAME>: <reason>` line. Hiding that signal
+inside a summary would be its own kind of going quiet.
+
+**Outage duration, WARN below threshold, CRIT beyond it.**
+`Monitor.note_liveness()` and `Monitor.outage_secs()` track how long the API
+has been continuously unreachable, using `time.monotonic()` rather than
+wall clock so a suspend/resume or NTP jump cannot corrupt the duration.
+Below `--down-threshold` (default `10.0`s) the outage alert is `WARN`,
+`"API unreachable for Ns. Expected briefly during a save load, the
+webserver unbinds"`, because the webserver unbinds on save load and a brief
+outage is benign
+([`../docs/wire-format.md`](../docs/wire-format.md)). At or beyond the
+threshold it escalates to `CRIT`, `"...beyond the Ns threshold. The plant
+is UNOBSERVED, no guard below is running"`, because a sustained outage
+means the game exited or crashed, not a save load, and every guard in this
+file is silently inert while it is None all the way down. Recovery prints
+once, `"API was unreachable for Ns, readings resumed"`, on the first
+snapshot after the API comes back, not on every snapshot afterward.
+
+During an outage `alerts()` can never return an empty list, that is the
+whole point: it is what stops `main()` from printing `all guards clear`
+while the plant is actually unobserved. `tools/test_monitor.py` asserts
+this directly.
+
+**The period-vs-threshold granularity trap.** `--interval` defaults to 15s.
+A 10s `--down-threshold` checked only once per snapshot could never
+actually resolve, an outage can start and fully end inside a single 15s
+sleep and nobody would ever see it cross the threshold. `--poll` (default
+`1.0`s) is how often liveness is checked **while sleeping between
+snapshots**, independent of `--interval`, and it is what makes
+`--down-threshold` observable at all: a threshold finer than the sample
+period is decorative unless something polls faster than it samples. If
+`--down-threshold` is set finer than `--poll`, `monitor.py` warns on
+stderr at startup rather than exiting, the run is still usable, just
+coarser than requested.
+
 ### Running the tests
 
 ```bash
@@ -266,7 +333,7 @@ python3 tools/test_monitor.py
 python3 -m unittest discover -s tools
 ```
 
-Both invocations run all 15 tests. Bare `python3 -m unittest` from the repo
+Both invocations run all 26 tests. Bare `python3 -m unittest` from the repo
 root discovers 0 tests: `tools/` deliberately has no `__init__.py`, and
 unittest's default recursive discovery skips directories that are not
 packages.

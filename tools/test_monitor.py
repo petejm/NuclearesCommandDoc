@@ -257,5 +257,157 @@ class TestErrorsAlwaysReported(unittest.TestCase):
         self.assertTrue(find(alerts, "ERROR", "SOME_VAR"))
 
 
+class TestLivenessTracking(unittest.TestCase):
+    """Cases 13-15: note_liveness() and outage_secs() as pure functions of
+    a caller-supplied `now`, driven by hand-picked monotonic values, no
+    sleeping, no network. This is the same rationale as the module
+    docstring: a real protection system is qualified with injected test
+    signals, not by waiting for a genuine outage to happen.
+    """
+
+    def test_falling_edge_sets_down_since_and_is_idempotent(self):
+        """Case 13: the first False observation sets down_since. A second,
+        later False observation while already down must NOT reset it,
+        note_liveness is idempotent in the down state, it records when the
+        outage started, not when it was last observed.
+        """
+        m = monitor.Monitor(1)
+        m.note_liveness(False, 100.0)
+        self.assertEqual(m.down_since, 100.0)
+        m.note_liveness(False, 105.0)
+        self.assertEqual(m.down_since, 100.0)
+
+    def test_rising_edge_clears_down_since_and_records_duration(self):
+        """Case 14: recovery clears down_since and records the completed
+        outage's duration in last_outage_secs.
+        """
+        m = monitor.Monitor(1)
+        m.note_liveness(False, 100.0)
+        m.note_liveness(True, 137.0)
+        self.assertIsNone(m.down_since)
+        self.assertEqual(m.last_outage_secs, 37.0)
+
+    def test_outage_secs_healthy_vs_down(self):
+        """Case 15: outage_secs is 0.0 while healthy, and the correct
+        elapsed delta while down.
+        """
+        m = monitor.Monitor(1)
+        self.assertEqual(m.outage_secs(500.0), 0.0)
+        m.note_liveness(False, 500.0)
+        self.assertEqual(m.outage_secs(512.5), 12.5)
+
+
+class TestOutageGuard(unittest.TestCase):
+    """Cases 16-18: the outage alert alerts() emits based on
+    outage_secs() vs down_threshold, and the invariant that alerts() can
+    never come back empty while an outage is in progress.
+    """
+
+    def test_outage_below_threshold_is_warn(self):
+        """Case 16: an outage shorter than down_threshold is WARN, not
+        CRIT, and reads as the benign, expected-during-a-save-load case.
+        """
+        m = monitor.Monitor(1, down_threshold=10.0)
+        m.note_liveness(False, 0.0)
+        alerts = m.alerts(healthy_snapshot(), [], now=5.0)
+        self.assertTrue(find(alerts, "WARN", "API unreachable"))
+        self.assertFalse(has_severity(alerts, "CRIT"))
+
+    def test_outage_at_threshold_is_crit(self):
+        """Case 17: an outage at exactly down_threshold escalates to CRIT,
+        and the message says the plant is unobserved.
+        """
+        m = monitor.Monitor(1, down_threshold=10.0)
+        m.note_liveness(False, 0.0)
+        alerts = m.alerts(healthy_snapshot(), [], now=10.0)
+        self.assertTrue(find(alerts, "CRIT", "UNOBSERVED"))
+
+    def test_outage_beyond_threshold_is_crit(self):
+        """Case 17 (continued): well beyond down_threshold is still CRIT,
+        same message.
+        """
+        m = monitor.Monitor(1, down_threshold=10.0)
+        m.note_liveness(False, 0.0)
+        alerts = m.alerts(healthy_snapshot(), [], now=25.0)
+        self.assertTrue(find(alerts, "CRIT", "UNOBSERVED"))
+
+    def test_alerts_never_empty_during_outage(self):
+        """Case 18: during an outage alerts() must never return an empty
+        list, this is what prevents main() from printing "all guards
+        clear" while the plant is actually unobserved. Every per-variable
+        guard is naturally inert on an all-None snapshot, so if alerts()
+        is non-empty here, the outage guard is the only thing that could
+        have put something in it.
+        """
+        m = monitor.Monitor(1)
+        m.note_liveness(False, 0.0)
+        v = {k: None for k in healthy_snapshot()}
+        alerts = m.alerts(v, [], now=3.0)
+        self.assertTrue(alerts)
+
+
+class TestErrorCollapse(unittest.TestCase):
+    """Cases 19-20: a wholesale transport-failure outage collapses to one
+    ERROR alert instead of one line per variable; a single bad variable,
+    or a mix of transport and non-transport failures, does not collapse.
+    """
+
+    def test_wholesale_transport_failure_collapses(self):
+        """Case 19: the motivating incident, reproduced directly. 24
+        entries, all transport failures (URLError), must collapse to
+        exactly ONE ERROR alert, not 24.
+        """
+        m = monitor.Monitor(1)
+        errs = [f"VAR_{i}: URLError" for i in range(24)]
+        alerts = m.alerts(healthy_snapshot(), errs)
+        error_alerts = [msg for sev, msg in alerts if sev == "ERROR"]
+        self.assertEqual(len(error_alerts), 1)
+        self.assertIn("24", error_alerts[0])
+
+    def test_single_bad_variable_not_collapsed(self):
+        """Case 20: regression test that the collapse does not hide real
+        signal. One unreadable variable still produces its own
+        per-variable ERROR alert, never a collapsed summary, because a
+        single bad name is a genuine, different fact from a wholesale
+        outage (for example a name that does not exist on this build).
+        """
+        m = monitor.Monitor(1)
+        alerts = m.alerts(healthy_snapshot(), ["WEIRD_NAME: no such variable"])
+        self.assertTrue(find(alerts, "ERROR", "WEIRD_NAME"))
+        self.assertFalse(find(alerts, "ERROR", "API unreachable"))
+
+    def test_mixed_transport_and_non_transport_not_collapsed(self):
+        """Case 20 (continued): a batch that is mostly transport failures
+        but includes one non-transport failure is NOT all-transport, so it
+        does not collapse either. Only a uniform, wholesale transport
+        failure does.
+        """
+        m = monitor.Monitor(1)
+        errs = [f"VAR_{i}: URLError" for i in range(24)] + ["ODD_NAME: no such variable"]
+        alerts = m.alerts(healthy_snapshot(), errs)
+        error_alerts = [msg for sev, msg in alerts if sev == "ERROR"]
+        self.assertEqual(len(error_alerts), 25)
+        self.assertTrue(any("ODD_NAME" in msg for msg in error_alerts))
+
+
+class TestOutageRecovery(unittest.TestCase):
+    """Case 21: the "readings resumed" recovery message fires exactly
+    once, on the first snapshot after recovery, not again on the one
+    after that.
+    """
+
+    def test_recovery_warn_fires_once(self):
+        m = monitor.Monitor(1)
+        m.note_liveness(False, 0.0)
+        m.note_liveness(True, 20.0)
+        self.assertEqual(m.last_outage_secs, 20.0)
+
+        first = m.alerts(healthy_snapshot(), [], now=21.0)
+        self.assertTrue(find(first, "WARN", "readings resumed"))
+
+        second = m.alerts(healthy_snapshot(), [], now=22.0)
+        self.assertFalse(find(second, "WARN", "readings resumed"))
+
+
 if __name__ == "__main__":
     unittest.main()
