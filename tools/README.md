@@ -158,11 +158,24 @@ operator.
 
 ```bash
 python3 tools/monitor.py --loop 3 --interval 15
-python3 tools/monitor.py --loop 3 --interval 10 --log run.tsv
+python3 tools/monitor.py --loop 1 --interval 10 --count 20 --log run.tsv
 ```
+
+`--loop` selects **which** secondary loop to watch, 1, 2 or 3. It is not a
+repeat count. `--count` is the repeat count, and defaults to 0, meaning run
+until interrupted, not run zero times.
 
 **Read-only.** The file contains no write method at all. That absence is the
 safety guarantee, rather than a flag someone could flip.
+
+### Severity levels
+
+| Severity | Meaning |
+|---|---|
+| `ERROR` | A variable could not be read. Never collapses into a healthy reading |
+| `CRIT` | Needs operator action now |
+| `WARN` | Needs attention, not yet urgent |
+| `INFO` | A condition that would be WARN or CRIT at power, downgraded because `regime()` has positively established the plant is in startup. Downgraded, not suppressed, it still prints every time |
 
 ### The guards are relational
 
@@ -182,6 +195,53 @@ An absolute temperature limit cannot catch "not boiling", because the boiling
 point is itself a live variable that was observed moving between 215 and 321
 within one session.
 
+### Gate by regime, don't suppress on doubt
+
+`Monitor.regime()` classifies the plant as `at_power`, `startup` or `unknown`,
+the way a real RPS permissive like P-7 gates trips by plant condition: a guard
+that is correct at power can be wrong during startup, when the checklist calls
+for MSCV `>= 25` and the loop is deliberately unbalanced.
+
+The direction of the gate is the load-bearing part, not its mere existence.
+`unknown` gates exactly like `at_power`, never like `startup`. Only a
+positively established `startup`, both `amps` and `op_mode` readable and not
+consistent with carrying load at `NOMINAL`, may downgrade a guard to `INFO`.
+The risky failure mode for a regime gate is suppression, not over-alerting: a
+gate that fails open when it cannot read the regime would disarm protection at
+exactly the moment telemetry has degraded, which is the one moment protection
+matters most.
+
+### The turbine-trip guard is a transition detector, not a latching trip
+
+The turbine-trip guard, the Trip 18 analog covering reactor trip on turbine
+trip, which Nucleares does not implement, fires by comparing current
+`STEAM_TURBINE_{n}_PRESSURE` against the highest pressure this run's own
+history has seen. It exists because a turbine that never started and a
+turbine that tripped read identically on pressure alone, and only the history
+tells them apart.
+
+That history lives in a `deque(maxlen=30)`, so the guard has a finite, bounded
+memory: once the pre-trip pressure ages out of the window, the guard stops
+firing even if the turbine is still down. That is intentional. This is a
+transition detector built to catch the moment of collapse, not a latching
+trip that remembers a fault forever.
+
+### The run-local inventory guard has no plant nominal to compare against
+
+`COOLANT_SEC_{n}_LIQUID_VOLUME` has no capacity or nominal variable anywhere in
+the manifest, so a percent-of-nominal guard, the actual Trip 16 form, is not
+computable (see [`../docs/protection-system.md`](../docs/protection-system.md)).
+The guard instead tracks a run-local high-water mark, raised only while the
+loop looks healthy, `at_power` with a non-negative balance, and alerts on
+percent below that mark.
+
+The documented weakness is deliberate, not a bug: if the monitor is started
+mid-drain and never observes a healthy at-power sample, no reference is ever
+established, and this guard cannot fire even though the plant is genuinely
+low. A silent wrong number is worse than no number, so it stays silent instead
+of guessing. `tools/test_monitor.py` asserts this behavior directly rather
+than treating it as an oversight.
+
 ### Guard the integral, not the derivative
 
 Inventory alerts use level plus net balance, never a rate sampled over one
@@ -198,3 +258,15 @@ one run with no intervention.
 ### Fail closed
 
 An unreadable variable raises `ERROR`. It never reads as healthy.
+
+### Running the tests
+
+```bash
+python3 tools/test_monitor.py
+python3 -m unittest discover -s tools
+```
+
+Both invocations run all 15 tests. Bare `python3 -m unittest` from the repo
+root discovers 0 tests: `tools/` deliberately has no `__init__.py`, and
+unittest's default recursive discovery skips directories that are not
+packages.

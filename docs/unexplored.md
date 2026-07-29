@@ -126,6 +126,18 @@ Still open, ranked by value per unit of effort:
    `<70%` integrity causes continuous bleed. Nobody has measured the rate, or
    established whether it is pressure only or mass as well. Requires a vessel
    below 70% and a clean inventory recording from t=0.
+4. **Probe `POWER_MAX_THEORETICAL_PLANT_OUTPUT_MW` and
+   `POWER_MAX_THEORETICAL_FINAL_PLANT_OUTPUT_MW`.** Both are readable and
+   present in `data/manifest.json`, and appear nowhere else in this
+   repository: never probed, no observed value, no documented semantics. If
+   either is a genuine rated-output constant, it supplies the missing divisor
+   that would make a real percent-of-rated-power P-7 gate computable, which
+   currently blocks the turbine-trip and low-feedwater guards in
+   `tools/monitor.py` from using their real Westinghouse setpoints instead of
+   the regime substitute (see [protection-system.md](protection-system.md)).
+   Suggested probe: read both on a fresh plant and again at steady full load.
+   Check whether they hold constant, and whether `POWER_FROM_TURBINE_KW`
+   divided by either lands in a plausible 0 to 1 range.
 
 ## Correction 2026-07-28: background drift is not constant
 
