@@ -141,12 +141,18 @@ reported `DONE` with the item that superseded them.
 **`GENERATOR_{n}_BREAKER` carries no information.** It reads `True` on idle and
 uninstalled units alike.
 
-**`GENERATOR_{n}_KW` is not delivered power during spin-up.** Observed reading
-**33702 kW at 15.14 Hz with 0 amps**, while `POWER_FROM_TURBINE_KW` read 210.6.
-It appears to be a potential figure. An earlier version of this tool checked
+**`GENERATOR_{n}_KW` is trustworthy exactly when `GENERATOR_{n}_A` is greater
+than 0.** At zero amps it is a fabricated potential figure. Observed reading
+**33702 kW at 15.14 Hz with 0 amps**. An earlier version of this tool checked
 `kw > 0` and consequently reported a successful grid sync for a generator
 delivering nothing. The check now uses **amps**, cross-referenced against grid
-frequency.
+frequency. With amps above 0, `GENERATOR_{n}_KW` equals `GENERATOR_{n}_V`
+times `GENERATOR_{n}_A` divided by 1000, exactly, verified across three
+consecutive samples on a synced machine. See
+[`../docs/value-semantics.md`](../docs/value-semantics.md).
+
+Do not reach for `POWER_FROM_TURBINE_KW` as a substitute reference in either
+regime. It does not track generation at all, see the same section.
 
 That bug is recorded rather than quietly fixed because it is the same failure
 this repository keeps documenting: a plausible variable that reads like success.

@@ -55,6 +55,13 @@ def healthy_snapshot(**overrides) -> dict:
         "amps": 500.0,
         "gen_kw": 29660.0,
         "sec_pump": 25.0,
+        # Confirmed readable live: only pump 2 running, pumps 0 and 1 read
+        # 0.0 legitimately (not an error), aggregate flow matches pump 2.
+        "core_pump_0": 0.0,
+        "core_pump_1": 0.0,
+        "core_pump_2": 25.0,
+        "core_flow": 25.0,
+        "core_qty": 116512.5,
         "core_state": "REACTIVO",
         "op_mode": "NOMINAL",
         "core_t": 300.0,
@@ -348,6 +355,89 @@ class TestInventorySeedRegimeIndependent(unittest.TestCase):
         alerts = m.alerts(v, [])
         self.assertTrue(find(alerts, "INFO", "expected during startup"))
         self.assertFalse(has_severity(alerts, "CRIT"))
+
+
+class TestLossOfForcedCirculationGuard(unittest.TestCase):
+    """Cases 27-32: loss of forced primary circulation with the reactor
+    critical, the RCS low flow trips analog. See the guard's own comment in
+    monitor.py for why this is deliberately not gated by regime().
+    """
+
+    def test_reactivo_with_zero_aggregate_flow_is_crit(self):
+        """Case 27: core_flow reading a float 0.0 is sufficient on its own
+        to call flow absent, regardless of what the pumps say.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(core_state="REACTIVO", core_flow=0.0)
+        alerts = m.alerts(v, [])
+        self.assertTrue(find(alerts, "CRIT", "circulation"))
+
+    def test_reactivo_with_pumps_zero_and_flow_unreadable_is_crit(self):
+        """Case 28: fail closed on the aggregate being missing. All three
+        pump speeds read 0.0 but core_flow is unreadable (None), the guard
+        must still fire, not stay quiet because one of the two readings is
+        gone.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(core_state="REACTIVO", core_flow=None,
+                              core_pump_0=0.0, core_pump_1=0.0, core_pump_2=0.0)
+        alerts = m.alerts(v, [])
+        self.assertTrue(find(alerts, "CRIT", "circulation"))
+
+    def test_reactivo_with_flow_present_no_alert(self):
+        """Case 29: healthy flow, reactor critical, produces no circulation
+        alert at all.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(core_state="REACTIVO", core_flow=25.0,
+                              core_pump_0=0.0, core_pump_1=0.0, core_pump_2=25.0)
+        alerts = m.alerts(v, [])
+        self.assertFalse(find(alerts, "CRIT", "circulation"))
+        self.assertFalse(find(alerts, "WARN", "circulation"))
+
+    def test_not_reactivo_with_zero_flow_no_crit(self):
+        """Case 30: shut down with the pumps off is not the same emergency
+        as critical with the pumps off. core_state not REACTIVO must not
+        produce a CRIT from this guard even with flow at 0.0.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(core_state="NOREACTIVO", core_flow=0.0)
+        alerts = m.alerts(v, [])
+        self.assertFalse(find(alerts, "CRIT", "circulation"))
+
+    def test_nonzero_flow_with_all_pumps_zero_is_crit_and_warn(self):
+        """Case 31: contradiction between the aggregate and the parts,
+        core_flow reads 25.0 (moving) while all three pumps read 0.0
+        (stopped). Fixed 2026-07-28: this used to let the WARN suppress the
+        CRIT, trusting the optimistic aggregate over the dangerous parts,
+        which is fail-open and backwards for this repository. A
+        disagreement between two readings is not a reason to relax, it is a
+        reason to believe the worse reading. All pumps at zero is the
+        dangerous reading, so the CRIT must fire regardless of what the
+        aggregate says, and the WARN about the disagreement must fire
+        alongside it, not instead of it. Both alerts are required here.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(core_state="REACTIVO", core_flow=25.0,
+                              core_pump_0=0.0, core_pump_1=0.0, core_pump_2=0.0)
+        alerts = m.alerts(v, [])
+        self.assertTrue(find(alerts, "WARN", "disagree"))
+        self.assertTrue(find(alerts, "CRIT", "circulation"))
+
+    def test_fires_in_startup_regime_intentionally_ungated(self):
+        """Case 32: proves the guard is intentionally NOT gated by
+        regime(), mirroring TestInventorySeedRegimeIndependent above. amps
+        0.0 and op_mode SHUTDOWN put regime() at "startup", and the CRIT
+        must fire anyway: loss of circulation with a critical core is
+        dangerous in every regime, including startup, the same reasoning
+        that leaves the secondary inventory guard ungated.
+        """
+        m = monitor.Monitor(1)
+        v = healthy_snapshot(core_state="REACTIVO", core_flow=0.0,
+                              amps=0.0, op_mode="SHUTDOWN")
+        self.assertEqual(m.regime(v), "startup")
+        alerts = m.alerts(v, [])
+        self.assertTrue(find(alerts, "CRIT", "circulation"))
 
 
 class TestErrorsAlwaysReported(unittest.TestCase):

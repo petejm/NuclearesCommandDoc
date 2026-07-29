@@ -99,11 +99,32 @@ STEAM_TURBINE_1_INSTALLED  False    STEAM_TURBINE_1_RPM  0
 STEAM_TURBINE_2_INSTALLED  True     STEAM_TURBINE_2_RPM  3050
 ```
 
-`POWER_FROM_TURBINE_KW` read 271.8 at that moment, all of it from turbine 2.
+`POWER_FROM_TURBINE_KW` read 271.8 at that moment. **Do not read that as
+turbine 2's delivered output.** This variable does not track generation at
+all, see [value-semantics.md](value-semantics.md) for the measured proof: it
+held constant across a session where generator output swung more than
+twofold.
 
 **Check `_INSTALLED` before trusting any indexed variable**, and note that an
 experiment targeting a non-existent unit measures nothing while looking like a
 clean negative result.
+
+## Primary circulation rate is a first-order input to both core temperature and core pressure
+
+Not an isolated incident, a plant-mechanics rule: primary coolant flow drives
+both `CORE_TEMP` and `CORE_PRESSURE` directly, not just one or the other.
+
+Measured live, reactor critical: the operator raised primary circulation from
+15 to 25. `CORE_TEMP` fell from about 312.4 to 306.3 and `CORE_PRESSURE` fell
+from 170.5 to 161.7 over the same window. `COOLANT_CORE_QUANTITY_IN_VESSEL`
+read 116512.5 throughout. Only core pump 2 runs on this plant, pumps 0 and 1
+legitimately read 0, which is not an error. See
+[protection-system.md](protection-system.md) for the instrumentation-gap
+incident this measurement is drawn from.
+
+**Implication for any characterization or control model:** omitting primary
+circulation rate as an input will misattribute both of these changes to
+whatever else moved during the same window.
 
 ## Post-save-load readings are not trustworthy
 

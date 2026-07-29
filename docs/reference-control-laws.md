@@ -248,6 +248,54 @@ The practical rule for a Nucleares client: when a reading moves sharply, the
 first question is not "what is wrong" but "is this the artefact or the thing".
 Check the balance before believing the level.
 
+## Characterizing the plant before controlling it
+
+A human operator builds an intuitive model of plant response from experience:
+raise the primary pump 10 points, core temperature comes down over the next
+minute or so, roughly this much. An automated client has no such prior. Every
+response curve it acts on has to be measured deliberately first. In
+engineering this is called characterization, and it is a precondition for
+control, not an optional refinement.
+
+**The standard artefact is a step response.** Change one input by a known
+amount, hold everything else fixed, and watch the output settle. Three
+numbers come out of it:
+
+| Term | Meaning |
+|---|---|
+| Gain | Change in output divided by change in input |
+| Dead time | Delay before the output moves at all |
+| Time constant | Time to reach 63.2 percent of the total change |
+
+Together these are a first-order-plus-dead-time model, and they are what let
+a controller be tuned rather than guessed at.
+
+**One variable at a time, or the result is a correlation, not a
+characterization.** Two cautionary cases from this session illustrate the
+failure mode directly, both discarded rather than published as data.
+
+An MSCV step from 5 to 10 was run while the operator simultaneously raised
+primary flow from 15 to 25. Both changes push core temperature the same
+direction. The resulting data cannot yield a gain for either input on its
+own, the two effects are confounded, and it had to be discarded as
+unattributed.
+
+Second, MSCV at 5 produced about 26.1 MW at one point in the session and
+about 29.9 MW at another, because primary flow and grid demand had both
+changed in between. The same valve position did not imply the same output.
+
+**This project's plan to split control into a fast deterministic loop and a
+slow supervisory loop** (see [protection-system.md](protection-system.md),
+"Implications for an automated client") depends on knowing the time
+constants involved. Those are currently unmeasured. The split is a sound
+architectural instinct, but until a real step response exists for at least
+the primary loop and MSCV, it is an assumption, not a design backed by data.
+
+This document was chosen over [operations.md](operations.md) for this
+section because it is a control-theory methodology note, not a procedure or
+setpoint, and it sits alongside this file's other control-law material
+rather than the startup and shutdown checklists.
+
 ## Mapping the manual to Nucleares systems
 
 Sections worth reading, ordered by relevance to what this repository documents.

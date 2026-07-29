@@ -199,3 +199,93 @@ raw index, generator labels use the physical number, in the same payload.
 
 **Do not infer the convention from a name.** Check `_INSTALLED`, or match
 against `attention_items`, or confirm against the in-game panel.
+
+## 9. `GENERATOR_{n}_KW` is trustworthy exactly when `GENERATOR_{n}_A` is greater than 0
+
+Two things are true about this variable, from two different regimes, and both
+are measured. The earlier warning that it is "misleading" needs qualifying,
+not deleting.
+
+**At zero amps**, `GENERATOR_{n}_KW` reports a fabricated potential figure.
+Observed **33702 kW at 15.14 Hz with 0 amps**. See
+[`../tools/README.md`](../tools/README.md) and `tools/checklist.py` for the
+bug this caused: an earlier check used `kw > 0` and reported a successful
+grid sync for a generator delivering nothing.
+
+**With amps above 0**, `GENERATOR_{n}_KW` equals `GENERATOR_{n}_V` times
+`GENERATOR_{n}_A`, divided by 1000, exactly. Verified across three
+consecutive samples on a synced machine, `GENERATOR_2_V` pinned at 22001.4 V
+throughout: residuals of -0.88, +1.06 and +0.16 kW against readings of about
+26,500 kW, which is rounding.
+
+**The rule: trust `GENERATOR_{n}_KW` if and only if `GENERATOR_{n}_A` is
+greater than 0.** Both observations are true, they just describe different
+regimes.
+
+## 10. `GENERATOR_{n}_V` exists and is readable
+
+Not previously documented anywhere in this repository. Reads a constant
+22001.4 V, at least across the sampling window that established section 9
+above. It is the other input, alongside `GENERATOR_{n}_A`, to the exact
+relationship in that section.
+
+## 11. `POWER_FROM_TURBINE_KW` does not track generation
+
+This is a correction, not an addition. [plant-mechanics.md](plant-mechanics.md)
+and [diagnostics-endpoint.md](diagnostics-endpoint.md) previously cited a
+`POWER_FROM_TURBINE_KW` reading as if it represented the turbine's delivered
+output at that moment, and `tools/checklist.py` cited it the same way. That
+framing is wrong.
+
+Measured: it read 223.2 early in a session, then 238.2, and then held at 238.2
+across every subsequent sample for the rest of the session, while generator
+output swung from 20,949 kW to 26,548 kW and later to roughly 50,000 kW. A
+change in real output of more than twofold produced no change in this
+variable.
+
+Be precise about the claim: it is not literally frozen, it did change once,
+from 223.2 to 238.2. The correct claim is that **it does not track
+generation**, not that it never moves.
+
+**What this variable actually represents is unknown.** It is not delivered
+power, and it must not be used for any power-fraction calculation, including
+a P-7 analog. No further speculation beyond that it is unknown.
+
+## 12. The rated-power constants are resolved: 400 is this plant's rated output
+
+`POWER_MAX_THEORETICAL_PLANT_OUTPUT_MW` reads 400 and
+`POWER_MAX_THEORETICAL_FINAL_PLANT_OUTPUT_MW` reads 1200, both constant across
+repeated sampling. The ratio is exactly 3.000, and this plant has three
+secondary loops.
+
+Only one turbine is installed: `STEAM_TURBINE_0_INSTALLED` and
+`STEAM_TURBINE_1_INSTALLED` both read `False`, `STEAM_TURBINE_2_INSTALLED`
+reads `True`. 1200 divided by 3 is 400, one rating per loop.
+
+**400 is this plant's rated output in its installed configuration**, and is
+the correct denominator for a percent-of-rated-power calculation here. 1200 is
+the full three-loop buildout, not this plant's current rating. This closes the
+probe [unexplored.md](unexplored.md) previously listed as open.
+
+Two honest limits on that conclusion:
+
+1. It is **not proven** that 400 tracks installed equipment. Confirming that
+   would require installing a second turbine and observing 400 become 800.
+   Both readings are equally consistent with 400 being a fixed per-loop
+   constant that does not respond to installation state at all.
+2. These are **electrical** MW. The real Westinghouse P-7 permissive is 10
+   percent of rated **thermal** power, a different quantity this API does not
+   expose. Any gate built on 400 is a proxy, and must be labelled as one, not
+   treated as the real setpoint. See
+   [protection-system.md](protection-system.md), "The calibration gap".
+
+## 13. `TIME_STAMP` is minutes since midnight, `TIME` is the same clock as HH:MM
+
+Measured: `TIME` read 13:24 while `TIME_STAMP` read 804, and 13 times 60 plus
+24 equals 804. It advanced to 841 later in the session. It therefore wraps at
+1440.
+
+This is the only correct clock for any rate limit on plant actions. Real
+wall-clock time is wrong whenever the game is paused or time-accelerated, and
+a client rate-limiting against `time.time()` will be wrong by exactly the
+game's speed multiplier. `TIME_STAMP` is not.

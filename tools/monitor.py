@@ -57,6 +57,13 @@ Design notes, each from a failure this repository documents:
   could never actually fire within its own window, an outage could start
   and end entirely between two samples. `--poll` exists to check liveness
   more often than snapshots are taken, independent of `--interval`.
+
+* **An instrument only sees what it was told to read.** The secondary loop
+  had a pump-speed column; the primary loop had none, so a real cause
+  (primary flow changing) showed up only as an effect (core temperature and
+  pressure moving) with no column to explain it. See
+  `docs/protection-system.md` for the measured incident this exposed, and
+  the loss-of-circulation guard in `alerts()` it led to.
 """
 
 from __future__ import annotations
@@ -197,6 +204,19 @@ class Monitor:
             "amps": f"GENERATOR_{i}_A",
             "gen_kw": f"GENERATOR_{i}_KW",
             "sec_pump": f"COOLANT_SEC_CIRCULATION_PUMP_{i}_SPEED",
+            # Primary (core) loop circulation. Added after the monitor was
+            # found blind to it: primary flow is a first-order driver of
+            # both CORE_TEMP and CORE_PRESSURE, and this tool had a column
+            # for secondary pump speed but none for the primary loop
+            # (docs/protection-system.md documents the incident that
+            # exposed the gap). On this plant only pump 2 is running, pumps
+            # 0 and 1 legitimately read 0.0, that is a real value, not an
+            # unreadable or error condition.
+            "core_pump_0": "COOLANT_CORE_CIRCULATION_PUMP_0_SPEED",
+            "core_pump_1": "COOLANT_CORE_CIRCULATION_PUMP_1_SPEED",
+            "core_pump_2": "COOLANT_CORE_CIRCULATION_PUMP_2_SPEED",
+            "core_flow": "COOLANT_CORE_FLOW_SPEED",
+            "core_qty": "COOLANT_CORE_QUANTITY_IN_VESSEL",
             "core_state": "CORE_STATE",
             "op_mode": "CORE_OPERATION_MODE",
             "core_t": "CORE_TEMP",
@@ -507,6 +527,89 @@ class Monitor:
                                f"does not. Lever: the API cannot trip the reactor from "
                                f"turbine state, so restore the heat sink or scram"))
 
+        # Loss of forced primary circulation with the reactor critical: the
+        # analog of the Westinghouse RCS low flow reactor trips (Table
+        # 12.2-1, docs/protection-system.md), the same table Trip 17 and
+        # Trip 18 above come from. Loss of forced circulation while the
+        # core is critical is one of the most serious PWR transients there
+        # is, heat keeps being produced with nothing carrying it away.
+        #
+        # COOLANT_CORE_CIRCULATION_PUMP_{0,1,2}_SPEED and
+        # COOLANT_CORE_FLOW_SPEED are two independent readings of the same
+        # underlying fact, an aggregate and its parts. Flow is treated as
+        # absent when either reading says so on its own: COOLANT_CORE_FLOW_
+        # SPEED reads a float 0.0, or all three pump speeds read float 0.0.
+        # This is deliberately an OR, not an AND, either reading failing is
+        # enough to mean nothing is moving.
+        core_flow = v.get("core_flow")
+        core_pumps = [v.get("core_pump_0"), v.get("core_pump_1"), v.get("core_pump_2")]
+        pumps_readable = all(isinstance(p, float) for p in core_pumps)
+        pumps_all_zero = pumps_readable and all(p == 0.0 for p in core_pumps)
+        flow_readable = isinstance(core_flow, float)
+        flow_zero = flow_readable and core_flow == 0.0
+        flow_nonzero = flow_readable and core_flow != 0.0
+
+        # Contradiction: the aggregate says flow IS moving while the parts
+        # say every pump is off. Those cannot both be true, and a
+        # disagreement is not a reason to relax, it is a reason to believe
+        # the worse reading and say the instruments conflict. All three
+        # pumps reading zero is the dangerous reading, so it drives the
+        # CRIT below regardless of what the aggregate claims, and the WARN
+        # below fires alongside the CRIT to record the disagreement itself,
+        # never instead of it. An earlier version of this guard let the WARN
+        # suppress the CRIT here, trusting the optimistic aggregate over the
+        # dangerous parts. That is fail-open, and it is backwards for this
+        # repository: when two readings disagree about whether a
+        # safety-relevant condition exists, the dangerous interpretation
+        # must win, not the comfortable one.
+        if flow_nonzero and pumps_all_zero:
+            a.append(("WARN", f"primary flow readings disagree: aggregate flow "
+                              f"{core_flow:.1f} but all three core circulation "
+                              f"pump readings are 0.0. Not resolved automatically, "
+                              f"check both instruments. The dangerous reading is "
+                              f"believed below, this WARN does not suppress the CRIT"))
+
+        flow_absent = flow_zero or pumps_all_zero
+        # CRITICAL DESIGN POINT: this guard is NOT regime gated,
+        # deliberately, for the same reason the secondary inventory
+        # guard above is not, see that guard's seeding comment. A
+        # permissive gates a MISMATCH, never a LEVEL or a STATE. This is
+        # the second instance of that rule in this file. Westinghouse
+        # Trip 16 (SG low-low level, a LEVEL) carries no interlocks at
+        # all. This guard is keyed to CORE_STATE reading REACTIVO, a
+        # STATE, not a mismatch between two variables, and loss of
+        # circulation with a critical core is dangerous in every
+        # regime, including startup. So it carries no permissive here
+        # either.
+        #
+        # Honest deviation from the reference architecture, stated
+        # plainly rather than left as an oversight: the REAL RCS low
+        # flow trips ARE gated by P-7 on a Westinghouse plant, because
+        # below 10% power there is not enough heat to matter. regime()
+        # exists and gates the steam/feed balance guard above the same
+        # way, the P-7 analog for a MISMATCH. It is not used here
+        # because no computable power fraction exists anywhere in this
+        # API (docs/protection-system.md, "The calibration gap"), and a
+        # proxy for load is not the same thing as a measurement of
+        # power fraction. Given no way to compute the real condition,
+        # the conservative choice is to leave the guard armed rather
+        # than gate a critical-core guard on a substitute that could be
+        # wrong in exactly the direction that suppresses a real
+        # emergency.
+        #
+        # This CRIT is deliberately evaluated unconditionally, not in an
+        # else branch off the disagreement check above: flow_absent is
+        # True whenever pumps_all_zero is True, regardless of what
+        # core_flow says, so the contradiction case above and the CRIT
+        # below both fire together on the same snapshot. See the
+        # contradiction comment above for why suppressing either one
+        # would be the fail-open pattern this repository bans.
+        if v.get("core_state") == "REACTIVO" and flow_absent:
+            a.append(("CRIT", "reactor critical with no forced primary "
+                              "circulation: heat is being produced with "
+                              "nothing carrying it away. Lever: restore a "
+                              "primary circulation pump immediately"))
+
         for lbl, cur, mx, frac in (
             ("core temp", v.get("core_t"), v.get("core_t_max"), 0.85),
             ("core pressure", v.get("core_p"), v.get("core_p_max"), 0.85),
@@ -557,7 +660,7 @@ def line(v: dict) -> str:
     return (f"liq {g('sec_liq')} | bal {g('ret')}-{g('out')} | mscv {g('mscv')} "
             f"| pump {g('sec_pump')} | rpm {g('rpm')} | {g('hz','{:.2f}')}Hz "
             f"| {g('amps')}A | gen {g('gen_kw','{:.1f}')}kW | demand {g('demand')}MW "
-            f"| core {g('core_t','{:.1f}')}C {g('core_p','{:.0f}')}bar crit {g('crit','{:+.2f}')} "
+            f"| cflow {g('core_flow')} | core {g('core_t','{:.1f}')}C {g('core_p','{:.0f}')}bar crit {g('crit','{:+.2f}')} "
             f"| pzr {g('pzr_p','{:.1f}')}/{g('pzr_p_op')} fill {g('pzr_fill')}")
 
 

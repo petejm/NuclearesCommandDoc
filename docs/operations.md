@@ -115,7 +115,10 @@ Observed `live-probe` on a plant with four such entries against
 
 The counter-warning: resistor banks **overheat** if left running too long before
 grid connection, which damages them instead. They are a transient sink for
-spin-up, not somewhere to park indefinitely.
+spin-up, not somewhere to park indefinitely. There is no automatic protection
+against this either, and only one bank is normally installed, so all dumped
+load lands on it. See [protection-system.md](protection-system.md) for the
+measured incident and numbers.
 
 ## Meeting demand: the thermal balance ratios
 

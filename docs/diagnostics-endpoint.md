@@ -145,7 +145,9 @@ At capture time:
 | 1 | False | 0 |
 | 2 | **True** | 3050 |
 
-while `POWER_FROM_TURBINE_KW` read 271.8, generated entirely by turbine 2.
+while `POWER_FROM_TURBINE_KW` read 271.8. That reading is not a measure of
+turbine 2's output: the variable does not track generation at all, see
+[value-semantics.md](value-semantics.md).
 
 **Check `_INSTALLED` before trusting any indexed equipment variable.** A client
 reading turbine 0 on this plant sees a plausible, permanently-zero turbine that

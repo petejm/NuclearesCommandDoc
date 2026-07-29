@@ -77,6 +77,39 @@ anticipates it earlier with trip 17.
 **No trip on the steam/feed mismatch.** The measured deficit reached 23 to 28
 units per tick with no response.
 
+**No resistor-bank overheat protection.** Measured live: `Resistor_Bank_01`,
+absorbing about 19.4 MW, held `Temperature` at 29.64 C, rising to only 29.65 C
+over 10 seconds, with no automatic response of any kind and no automatic
+load-shed to the other banks. `RESISTOR_BANKS_JSON` exposes `Temperature` per
+bank as an instrument, but the game takes no protective action on it. The
+human operator had to intervene manually and close MSCV to keep the single
+installed bank from overheating.
+
+The compounding factor: of the four banks the manifest defines,
+`RESISTOR_BANKS_JSON` shows only `Resistor_Bank_01` with `IsInstalled: 1`.
+Banks 02 through 04 read `IsInstalled: 0` with `Temperature: 0.0`, and their
+switches, `RESISTOR_BANK_02_SWITCH` through `RESISTOR_BANK_04_SWITCH`, all
+read `False`, alongside `RESISTOR_BANK_01_SWITCH` and
+`RESISTOR_BANKS_MAIN_SWITCH` both reading `True`. So every watt the grid does
+not take lands on one bank, not four.
+
+This is the fifth protection found missing in this repository, in the same
+honest style as the pressurizer heater cutoff in
+[reference-control-laws.md](reference-control-laws.md): the game exposes the
+instrument, `Temperature` per bank, but provides no protective action, so
+only an operator or a client watching that instrument can act.
+
+**The operating rule this implies, from the operator:** on this plant, more
+steam does not mean more useful power. The grid takes only what it demands,
+`POWER_DEMAND_MW`, and everything generated above that becomes heat in the
+resistor banks. Measured live: generating 26,548 kW against a demand of 7 MW
+dumped about 19.5 MW, 73.6 percent of generation, into the bank. Later in the
+same session generation reached roughly 50 MW against a demand of 10.5 MW,
+the same pattern at larger scale. Generation above demand is waste with a
+thermal consequence on this plant, not merely inefficiency, and a controller
+that maximises steam output without checking demand is choosing to heat a
+resistor bank that has no automatic protection.
+
 **Consequence:** the game's plant will let you destroy it. Everything protective
 here is either the operator or something a client implements. That is the
 argument for building the monitor before building any controller.
@@ -106,6 +139,7 @@ in [`../tools/monitor.py`](../tools/monitor.py) against both.
 | Low feedwater flow (Trip 17) | SG level 25.5% AND `Ws > Wf` | Guarded relationally, steam/feed balance against falling inventory, and now gated by regime: downgraded to `INFO` during startup rather than suppressed |
 | Reactor trip on turbine trip (Trip 18) | Above P-7, 10% power | Detected and alerted, **not actioned**. The API has no path to trip the reactor from turbine state, and this tool is read-only by design, so the strongest response available is telling a human |
 | SG low-low level (Trip 16) | 11.5% | **Not guarded as specified.** See below |
+| Loss of forced primary circulation, reactor critical (RCS low flow trips analog) | Below P-7, 10% power | Guarded, and deliberately not gated by regime. See below |
 
 ### Why SG low-low level is not guarded as specified
 
@@ -128,7 +162,30 @@ never fires at all, silently, by design, because a silent wrong number is
 worse than no number. None of that is true of Trip 16, which is derived
 from a known plant nominal and holds regardless of any one run's history.
 
-### A permissive gates a mismatch, never a level
+### An instrumentation gap, not a design choice: the primary loop was invisible
+
+Before this fix, `monitor.py` read `COOLANT_SEC_CIRCULATION_PUMP_{n}_SPEED` for
+the secondary loop and nothing at all about the primary loop. Primary coolant
+flow is a first-order driver of both `CORE_TEMP` and `CORE_PRESSURE`, two of the
+numbers this tool watches most closely, so the tool was blind to the cause of
+its own headline signals.
+
+Measured live, on a plant with the reactor critical: the operator raised
+primary flow from 15 to 25. `CORE_TEMP` fell from about 312.4 to 306.3, roughly
+3.8 C per minute, and `CORE_PRESSURE` fell from 170.5 to 161.7 over the same
+window. With no column for the cause, the temperature and pressure drop looked
+uncaused, and an automated client sitting in that position naturally
+misattributes a change like that to whatever it last did itself. That is the
+fail-open measurement failure mode this repository documents elsewhere,
+showing up on a different signal.
+
+`monitor.py` now reads `COOLANT_CORE_CIRCULATION_PUMP_{0,1,2}_SPEED` and
+`COOLANT_CORE_FLOW_SPEED`, surfaces primary flow in the terminal status line
+next to core temperature and pressure, and carries a guard for loss of forced
+circulation with the reactor critical, the RCS low flow trips analog. That
+guard is the subject of the next section.
+
+### A permissive gates a mismatch, never a level or a state
 
 The reference above seeds in any regime, not only at power, and that was a
 fix, not the original design. The first version gated the seed by
@@ -162,6 +219,32 @@ silent if no sample with balance not negative is ever observed. The fix
 only removes a gate that should never have been there; it does not close
 the calibration gap described below.
 
+The same rule applies a second time in this file, to a different kind of
+guard. Loss of forced primary circulation with the reactor critical is
+guarded by `CORE_STATE` reading `REACTIVO` together with primary flow
+reading absent, either `COOLANT_CORE_FLOW_SPEED` at 0.0 or all three
+`COOLANT_CORE_CIRCULATION_PUMP_{n}_SPEED` readings at 0.0. That is a STATE,
+not a mismatch between two variables, and it is dangerous in every regime,
+including startup, for the same reason a level is: heat production does not
+pause for plant regime. The RCS low flow trips this guard mirrors carry no
+such exception on the real plant either, they exist specifically so a
+critical core is never left without a heat removal path. So this guard,
+like the inventory-reference seed above it, is not gated by `regime()`.
+
+Honest deviation from the reference architecture, stated plainly rather
+than left as an oversight: the real RCS low flow trips ARE gated by `P-7`,
+below 10% power, because there is not enough heat below that point to
+matter. `monitor.py` does not gate on `P-7` here, and the reason is a
+missing input, not an oversight. No computable power fraction exists
+anywhere in this API, see "The calibration gap" below, so a literal `P-7`
+gate cannot be built, and `regime()`'s substitute for `P-7`, generator
+carrying load and `CORE_OPERATION_MODE` at `NOMINAL`, is a proxy for load,
+not a measurement of power fraction. Gating a critical-core guard on a
+proxy that could be wrong in exactly the direction that suppresses a real
+emergency is worse than leaving the guard armed everywhere the core reads
+critical. The guard stays armed in every regime as a deliberate, documented
+choice, not a stand-in for the real permissive.
+
 ### The calibration gap
 
 Two computations a client would want are blocked by the same kind of missing
@@ -170,13 +253,29 @@ real setpoint.
 
 **Power fraction.** Trip 18 is gated by P-7, 10% of rated power. `CORE_STATE_CRITICALITY`
 is reactivity, not a power fraction. `GENERATOR_{n}_KW` is documented
-elsewhere in this repository as misleading during spin-up (see
-[`../tools/README.md`](../tools/README.md) and `tools/checklist.py`). No
-`CORE_THERMAL_POWER` variable exists anywhere in the manifest. So a literal
-percent-of-rated-power gate is not computable, and `regime()` substitutes "the
-generator is actually carrying load, `GENERATOR_{n}_A` above zero, and
+elsewhere in this repository as trustworthy only when `GENERATOR_{n}_A` is
+above zero, and fabricated otherwise (see
+[`../tools/README.md`](../tools/README.md), `tools/checklist.py`, and
+[value-semantics.md](value-semantics.md)). No `CORE_THERMAL_POWER` variable
+exists anywhere in the manifest. So a literal percent-of-rated-**thermal**-power
+gate is not computable, and `regime()` substitutes "the generator is
+actually carrying load, `GENERATOR_{n}_A` above zero, and
 `CORE_OPERATION_MODE` reads `NOMINAL`", which is what P-7 is really asking,
 without the missing denominator.
+
+**Update 2026-07-28: the denominator half of this gap is resolved for
+electrical power, the thermal-power half is not.**
+`POWER_MAX_THEORETICAL_PLANT_OUTPUT_MW` reads 400, a genuine rated-output
+constant for this plant's installed configuration (see
+[value-semantics.md](value-semantics.md)). Paired with `GENERATOR_{n}_KW`
+when `GENERATOR_{n}_A` is above zero, that supplies a computable electrical
+percent-of-rated-output figure. It is still not the literal P-7 permissive:
+Westinghouse defines P-7 against 10 percent of rated **thermal** power, and
+no thermal-power variable exists anywhere in this API. An electrical-output
+gate built on 400 is a proxy for P-7, not the permissive itself, and must be
+labelled as one. `regime()`'s substitute is unchanged by this: it still
+gates on load and mode, not on the new proxy, pending a decision about
+whether the proxy is worth adopting over the existing substitute.
 
 **SG level percent.** `COOLANT_SEC_{n}_LIQUID_VOLUME` has no capacity, nominal
 or max variable anywhere in the manifest, so a literal percent of plant

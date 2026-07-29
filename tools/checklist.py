@@ -187,9 +187,18 @@ def build(loop: int) -> list[Item]:
         1. GENERATOR_{n}_BREAKER reads True even on idle, uninstalled units, so
            it carries no information.
         2. GENERATOR_{n}_KW is a potential figure during spin-up, not delivered
-           power. Observed reading 33702 kW at 15.14 Hz with 0 amps and
-           POWER_FROM_TURBINE_KW at 210.6. An earlier version of this check used
-           kw > 0 and passed a generator that was delivering nothing.
+           power, when amps read 0. Observed reading 33702 kW at 15.14 Hz with
+           0 amps. An earlier version of this check used kw > 0 and passed a
+           generator that was delivering nothing. With amps above 0, KW is
+           trustworthy: it equals V times A divided by 1000, exactly, see
+           ../docs/value-semantics.md.
+
+        POWER_FROM_TURBINE_KW is not a substitute reference for either
+        regime above. It does not track generation at all, see the same doc.
+        An earlier version of this comment cited a POWER_FROM_TURBINE_KW
+        reading alongside the 0-amp observation as if it corroborated
+        anything; it did not, it was coincidentally a low number in a low
+        regime.
 
         Amps is the honest indicator, cross-checked against grid frequency.
         """
@@ -275,8 +284,16 @@ def build(loop: int) -> list[Item]:
              lambda c: f"STEAM_TURBINE_{c.i}_RPM",
              lambda v: (num(v) or 0) >= 3060, "{} rpm")),
         Item("Sync - CLOSE Breaker", breaker),
+        # `(num(v) or 1) == 0` was the obvious spelling and it could never
+        # pass. The `or 1` was meant to fail closed when the value does not
+        # parse, substituting a non-zero so an unreadable reading is not
+        # scored as OK. But 0.0 is falsy too, so the guard also swallowed
+        # the one value that SHOULD pass, and this item read PENDING at a
+        # plant with external power genuinely at 0. Found on a live plant.
+        # The rule this is an instance of: never use `or` to default a
+        # numeric when zero is a meaningful value. Test against None.
         Item("External Power OFF", simple(lambda c: "POWER_FROM_EXTERNAL_KW",
-             lambda v: (num(v) or 1) == 0, "{} kW")),
+             lambda v: num(v) is not None and num(v) == 0, "{} kW")),
     ]
 
 
